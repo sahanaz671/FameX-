@@ -152,8 +152,8 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-        // Added: deleteDoc, increment
+        // CHANGE 1: Added onAuthStateChanged here
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
         import { getFirestore, collection, getDocs, getDoc, doc, updateDoc, deleteDoc, onSnapshot, query, orderBy, increment } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
         // CONFIG (Same as your main site)
@@ -180,7 +180,17 @@
         const loginScreen = document.getElementById('login-screen');
         const dashboard = document.getElementById('dashboard');
 
-        // --- AUTH LOGIC ---
+        // --- CHANGE 2: SESSION LISTENER (Keeps you logged in) ---
+        onAuthStateChanged(auth, (user) => {
+            if (user && user.email === ADMIN_EMAIL) {
+                // User is signed in and is the correct admin
+                initAdminPanel();
+            } else {
+                console.log("No active admin session found.");
+            }
+        });
+
+        // --- LOGIN LOGIC (Manual click) ---
         loginBtn.addEventListener('click', async () => {
             try {
                 const result = await signInWithPopup(auth, provider);
