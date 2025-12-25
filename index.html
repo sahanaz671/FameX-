@@ -273,6 +273,9 @@
             <div class="menu-item" onclick="openVerifyModal()">
                 <i class="fas fa-file-invoice-dollar"></i> Verify Payment
             </div>
+            <div class="menu-item" onclick="showSection('payment-history-section'); loadPaymentHistory();">
+                <i class="fas fa-history"></i> Payment Status
+            </div>
             <a href="#footer-support" class="menu-item" onclick="toggleSidebar()">
                 <i class="fas fa-headset"></i> Help & Support
             </a>
@@ -310,6 +313,24 @@
                 </thead>
                 <tbody id="orders-table-body">
                 </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="container section" id="payment-history-section">
+        <h2 style="text-align:center; margin-bottom:30px; color:white;">Payment Status</h2>
+        <div style="overflow-x:auto;">
+            <table style="width:100%; border-collapse:collapse; background:var(--card-bg); border-radius:10px;">
+                <thead>
+                    <tr style="border-bottom:1px solid #333; color:var(--accent);">
+                        <th style="padding:15px; text-align:left;">Date</th>
+                        <th style="padding:15px; text-align:left;">Amount</th>
+                        <th style="padding:15px; text-align:left;">UTR / Sender</th>
+                        <th style="padding:15px; text-align:center;">Status</th>
+                    </tr>
+                </thead>
+                <tbody id="payment-table-body">
+                    </tbody>
             </table>
         </div>
     </div>
@@ -458,6 +479,7 @@
         window.showSection = (sectionId) => {
             document.getElementById('services-container').style.display = 'none';
             document.getElementById('my-orders-section').style.display = 'none';
+            document.getElementById('payment-history-section').style.display = 'none';
             
             const target = document.getElementById(sectionId);
             if(sectionId === 'services-container') target.style.display = 'grid';
@@ -531,15 +553,14 @@
 
         window.closeOrderModal = () => document.getElementById('orderModal').style.display = 'none';
 
-        // --- REAL-TIME ORDER HISTORY ---
+        // --- REAL-TIME ORDER HISTORY (Sorting Removed for Safety) ---
         window.loadOrderHistory = () => {
             if(!currentUser) return;
             const tbody = document.getElementById('orders-table-body');
             tbody.innerHTML = "<tr><td colspan='5' style='text-align:center; padding:20px;'>Loading...</td></tr>";
 
-            const q = query(collection(db, "orders"), where("userId", "==", currentUser.uid), orderBy("timestamp", "desc"));
+            const q = query(collection(db, "orders"), where("userId", "==", currentUser.uid));
             
-            // Listen for changes
             onSnapshot(q, (snapshot) => {
                 tbody.innerHTML = "";
                 if(snapshot.empty) {
@@ -571,10 +592,46 @@
                     `;
                     tbody.innerHTML += row;
                 });
-            }, (error) => {
-                console.error("Error fetching orders:", error);
-                // IF YOU SEE THIS ALERT, CHECK THE CONSOLE FOR THE INDEX LINK
-                alert("Order list failed. Check console for 'Missing Index' link.");
+            });
+        }
+
+        // --- PAYMENT STATUS LOGIC (New) ---
+        window.loadPaymentHistory = () => {
+            if(!currentUser) return;
+            const tbody = document.getElementById('payment-table-body');
+            tbody.innerHTML = "<tr><td colspan='4' style='text-align:center; padding:20px;'>Loading...</td></tr>";
+
+            const q = query(collection(db, "payment_verifications"), where("userId", "==", currentUser.uid));
+            
+            onSnapshot(q, (snapshot) => {
+                tbody.innerHTML = "";
+                if(snapshot.empty) {
+                    tbody.innerHTML = "<tr><td colspan='4' style='text-align:center; padding:20px; color:#888;'>No payment history found.</td></tr>";
+                    return;
+                }
+                
+                snapshot.forEach(doc => {
+                    const payment = doc.data();
+                    let statusColor = '#ffc107'; // Checking
+                    if(payment.status === 'Success' || payment.status === 'Approved') statusColor = '#00e676';
+                    if(payment.status === 'Rejected') statusColor = '#ff5252';
+                    
+                    const date = payment.timestamp ? new Date(payment.timestamp.seconds * 1000).toLocaleDateString() : 'N/A';
+
+                    const row = `
+                        <tr style="border-bottom:1px solid #222;">
+                            <td style="padding:15px; font-size:0.8rem; color:#888;">${date}</td>
+                            <td style="padding:15px; color:var(--gold);">₹${payment.amount}</td>
+                            <td style="padding:15px; font-size:0.8rem;">${payment.utr}<br><span style="color:#666;">${payment.senderName}</span></td>
+                            <td style="padding:15px; text-align:center;">
+                                <span style="color:${statusColor}; font-weight:bold; font-size:0.85rem; border:1px solid ${statusColor}; padding:2px 8px; border-radius:4px;">
+                                    ${payment.status}
+                                </span>
+                            </td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                });
             });
         }
 
