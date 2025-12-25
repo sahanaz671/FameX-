@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FameX | Admin Control</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* --- ADMIN DARK THEME --- */
+        :root {
+            --bg-dark: #050505;
+            --card-bg: #111;
+            --accent: #ff5252; /* Red for Admin Power */
+            --text-main: #ffffff;
+            --success: #00e676;
+        }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            margin: 0; padding: 20px;
+        }
+        h1, h2 { text-align: center; text-transform: uppercase; letter-spacing: 2px; }
+        
+        .admin-login {
+            max-width: 400px; margin: 100px auto; padding: 40px;
+            background: var(--card-bg); border: 1px solid #333; text-align: center;
+            border-radius: 15px;
+        }
+        
+        .dashboard { display: none; max-width: 1200px; margin: 0 auto; }
+        
+        .btn {
+            background: var(--accent); color: white; border: none;
+            padding: 10px 20px; cursor: pointer; border-radius: 5px; font-weight: bold;
+        }
+        
+        /* Tabs */
+        .tabs { display: flex; justify-content: center; gap: 20px; margin-bottom: 30px; }
+        .tab-btn { background: #222; border: 1px solid #444; color: #888; }
+        .tab-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+        .section { display: none; }
+        .section.active { display: block; }
+
+        /* Data Tables */
+        table { width: 100%; border-collapse: collapse; background: #161616; margin-top: 20px; }
+        th, td { padding: 15px; text-align: left; border-bottom: 1px solid #333; }
+        th { color: var(--accent); }
+        
+        input.balance-input { 
+            background: #222; border: 1px solid #444; color: white; 
+            padding: 8px; width: 80px; text-align: center; 
+        }
+        
+        .btn-save { background: var(--success); padding: 8px 15px; font-size: 0.9rem; }
+
+    </style>
+</head>
+<body>
+
+    <div id="login-screen" class="admin-login">
+        <h2><i class="fas fa-user-shield"></i> Admin Access</h2>
+        <p>Restricted Area. Authorized Personnel Only.</p>
+        <button class="btn" id="adminLoginBtn">Login with Google</button>
+    </div>
+
+    <div id="dashboard" class="dashboard">
+        <h1>FameX Admin Panel</h1>
+        
+        <div class="tabs">
+            <button class="btn tab-btn active" onclick="showTab('users')">Users & Funds</button>
+            <button class="btn tab-btn" onclick="showTab('orders')">Manage Orders</button>
+        </div>
+
+        <div id="users" class="section active">
+            <h2>User Database</h2>
+            <button class="btn" onclick="loadUsers()" style="background:#333; font-size:0.8rem;">Refresh List</button>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Current Balance</th>
+                        <th>Update Funds</th>
+                    </tr>
+                </thead>
+                <tbody id="user-table-body">
+                    <tr><td colspan="4" style="text-align:center;">Loading users...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div id="orders" class="section">
+            <h2>Recent Orders</h2>
+            <p style="text-align:center; color:#888;">(Order tracking features coming in next update)</p>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+        import { getFirestore, collection, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+        // CONFIG
+        const firebaseConfig = {
+            apiKey: "AIzaSyAN_hd8rr46X25lOZ0cKwe6pAVl2sh61AI",
+            authDomain: "famex-4cb1e.firebaseapp.com",
+            projectId: "famex-4cb1e",
+            storageBucket: "famex-4cb1e.firebasestorage.app",
+            messagingSenderId: "395925089964",
+            appId: "1:395925089964:web:551ef2089aa25d09743909",
+            measurementId: "G-S1T0L618XL"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const provider = new GoogleAuthProvider();
+
+        // --- 🔒 SECURITY: REPLACE THIS WITH YOUR EMAIL ---
+        const ADMIN_EMAIL = "yoursa.in.here@gmail.com"; 
+
+        const loginBtn = document.getElementById('adminLoginBtn');
+        const loginScreen = document.getElementById('login-screen');
+        const dashboard = document.getElementById('dashboard');
+
+        // Login Logic
+        loginBtn.addEventListener('click', async () => {
+            try {
+                const result = await signInWithPopup(auth, provider);
+                const user = result.user;
+
+                if (user.email === ADMIN_EMAIL) {
+                    loginScreen.style.display = 'none';
+                    dashboard.style.display = 'block';
+                    loadUsers(); 
+                } else {
+                    alert("ACCESS DENIED: You are not the authorized Administrator.");
+                    await auth.signOut();
+                }
+            } catch (error) {
+                console.error(error);
+                alert("Login Error: " + error.message);
+            }
+        });
+
+        // Tab Switching
+        window.showTab = (tabName) => {
+            document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // --- 1. LOAD USERS & BALANCE ---
+        window.loadUsers = async () => {
+            const tableBody = document.getElementById('user-table-body');
+            tableBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Loading...</td></tr>';
+            
+            try {
+                const querySnapshot = await getDocs(collection(db, "users"));
+                tableBody.innerHTML = ''; // Clear loading message
+
+                querySnapshot.forEach((docSnap) => {
+                    const user = docSnap.data();
+                    const userId = docSnap.id;
+                    
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${user.name || "Unknown"}</td>
+                        <td>${user.email}</td>
+                        <td style="color:var(--gold); font-weight:bold;">₹${user.balance || 0}</td>
+                        <td>
+                            <input type="number" id="input-${userId}" class="balance-input" placeholder="New Amount" value="${user.balance || 0}">
+                            <button class="btn btn-save" onclick="updateUserBalance('${userId}')">Save</button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            } catch (e) {
+                console.error("Error loading users:", e);
+                tableBody.innerHTML = '<tr><td colspan="4" style="color:red;">Error loading data. Check console.</td></tr>';
+            }
+        }
+
+        // --- 2. UPDATE BALANCE FUNCTION ---
+        window.updateUserBalance = async (userId) => {
+            const newAmount = document.getElementById(`input-${userId}`).value;
+            if(!confirm(`Are you sure you want to set balance to ₹${newAmount}?`)) return;
+
+            try {
+                const userRef = doc(db, "users", userId);
+                await updateDoc(userRef, {
+                    balance: parseInt(newAmount)
+                });
+                alert("Balance Updated Successfully!");
+                loadUsers(); // Refresh the list
+            } catch (e) {
+                alert("Error updating balance: " + e.message);
+            }
+        }
+
+    </script>
+</body>
+</html>
