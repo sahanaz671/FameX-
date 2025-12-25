@@ -26,7 +26,7 @@
             margin: 0;
             padding: 0;
             overflow-x: hidden;
-            scroll-behavior: smooth; /* Smooth scrolling for menu links */
+            scroll-behavior: smooth;
         }
 
         /* Navbar */
@@ -153,6 +153,10 @@
 
         /* Grid */
         .container { max-width: 1200px; margin: 0 auto; padding: 40px 20px; }
+        .section { display: none; animation: fadeIn 0.5s; } /* Hide sections by default */
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
         .category-title {
             margin-top: 70px; margin-bottom: 25px;
             font-size: 1.6rem;
@@ -203,6 +207,7 @@
             background: #111; padding: 40px; border-radius: 20px; text-align: center;
             max-width: 400px; width: 90%; border: 1px solid var(--accent);
             box-shadow: 0 0 50px var(--accent-glow);
+            position: relative;
         }
         .qr-code { width: 100%; max-width: 260px; border-radius: 15px; margin: 25px 0; border: 3px solid white; }
         
@@ -250,17 +255,17 @@
         </div>
 
         <div class="menu-list">
-            <a href="#services-container" class="menu-item" onclick="toggleSidebar()">
-                <i class="fas fa-layer-group"></i> Services
-            </a>
+            <div class="menu-item" onclick="showSection('services-container')">
+                <i class="fas fa-layer-group"></i> Services / New Order
+            </div>
+            <div class="menu-item" onclick="showSection('my-orders-section'); loadOrderHistory();">
+                <i class="fas fa-list-ul"></i> My Orders
+            </div>
             <div class="menu-item" onclick="openPaymentModal()">
                 <i class="fas fa-wallet"></i> Add Funds
             </div>
             <a href="#footer-support" class="menu-item" onclick="toggleSidebar()">
                 <i class="fas fa-headset"></i> Help & Support
-            </a>
-            <a href="#top" class="menu-item" onclick="toggleSidebar()">
-                <i class="fas fa-info-circle"></i> About FameX
             </a>
         </div>
 
@@ -278,8 +283,27 @@
         <p>Premium SMM Services. Instant Delivery. Dark Aesthetics.</p>
     </div>
 
-    <div class="container" id="services-container">
+    <div class="container section" id="services-container" style="display:grid;">
         </div>
+
+    <div class="container section" id="my-orders-section">
+        <h2 style="text-align:center; margin-bottom:30px; color:white;">My Orders</h2>
+        <div style="overflow-x:auto;">
+            <table style="width:100%; border-collapse:collapse; background:var(--card-bg); border-radius:10px;">
+                <thead>
+                    <tr style="border-bottom:1px solid #333; color:var(--accent);">
+                        <th style="padding:15px; text-align:left;">ID</th>
+                        <th style="padding:15px; text-align:left;">Service</th>
+                        <th style="padding:15px; text-align:left;">Link</th>
+                        <th style="padding:15px; text-align:center;">Charge</th>
+                        <th style="padding:15px; text-align:center;">Status</th>
+                    </tr>
+                </thead>
+                <tbody id="orders-table-body">
+                    </tbody>
+            </table>
+        </div>
+    </div>
 
     <div class="modal" id="paymentModal">
         <div class="modal-content">
@@ -290,6 +314,34 @@
                 Scan & Pay. Send screenshot + Transaction ID to WhatsApp support to update balance.
             </p>
             <button class="close-btn" onclick="closeModal()">Close</button>
+        </div>
+    </div>
+
+    <div class="modal" id="orderModal">
+        <div class="modal-content" style="text-align:left; max-width:500px;">
+            <h2 style="text-align:center; margin-top:0;">New Order</h2>
+            
+            <div style="background:rgba(255, 193, 7, 0.1); border:1px solid #ffc107; color:#ffc107; padding:10px; border-radius:8px; font-size:0.85rem; margin-bottom:20px;">
+                <i class="fas fa-exclamation-triangle"></i> <strong>Important:</strong><br>
+                • Account must be <strong>Public</strong>.<br>
+                • For Followers: Turn OFF "Flag for Review".
+            </div>
+
+            <label style="color:var(--text-muted); font-size:0.9rem;">Service</label>
+            <input type="text" id="orderServiceName" readonly style="width:100%; padding:10px; margin-bottom:15px; background:#222; border:1px solid #444; color:white; border-radius:5px;">
+            
+            <label style="color:var(--text-muted); font-size:0.9rem;">Link (Instagram Post/Profile)</label>
+            <input type="text" id="orderLink" placeholder="https://instagram.com/..." style="width:100%; padding:10px; margin-bottom:15px; background:#222; border:1px solid #444; color:white; border-radius:5px;">
+
+            <label style="color:var(--text-muted); font-size:0.9rem;">Quantity (Min: 10)</label>
+            <input type="number" id="orderQty" placeholder="100" oninput="calculatePrice()" style="width:100%; padding:10px; margin-bottom:15px; background:#222; border:1px solid #444; color:white; border-radius:5px;">
+
+            <div style="text-align:right; margin-bottom:20px; font-size:1.1rem;">
+                Total Charge: <span id="orderPrice" style="color:var(--accent); font-weight:bold;">₹0</span>
+            </div>
+
+            <button id="btnConfirmOrder" class="btn-buy" onclick="submitOrder()">Place Order</button>
+            <button class="close-btn" onclick="closeOrderModal()" style="width:100%; margin-top:10px; background:transparent; border:1px solid #444;">Cancel</button>
         </div>
     </div>
 
@@ -306,7 +358,8 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+        // Added: addDoc, collection, query, where, orderBy for Order Management
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, addDoc, collection, onSnapshot, query, where, orderBy } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAN_hd8rr46X25lOZ0cKwe6pAVl2sh61AI",
@@ -325,24 +378,23 @@
 
         let currentUser = null;
         let currentBalance = 0;
+        let selectedServicePricePer1k = 0; // Store price for calculation
 
         const loginBtn = document.getElementById('loginBtn');
         const menuBtn = document.getElementById('menuBtn');
         const logoutBtn = document.getElementById('logoutBtn');
 
-        // Check Login State
+        // AUTH & BALANCE LISTENER
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 currentUser = user;
                 loginBtn.style.display = 'none';
                 menuBtn.style.display = 'block';
                 
-                // Update Sidebar
                 document.getElementById('sideUserName').innerText = user.displayName;
                 document.getElementById('sideUserEmail').innerText = user.email;
                 document.getElementById('sideUserPic').src = user.photoURL;
 
-                // DB Logic
                 const userRef = doc(db, "users", user.uid);
                 onSnapshot(userRef, (docSnap) => {
                     if (docSnap.exists()) {
@@ -350,77 +402,172 @@
                         document.getElementById('userBalance').innerText = currentBalance;
                     } else {
                         setDoc(userRef, {
-                            name: user.displayName,
-                            email: user.email,
-                            balance: 0
+                            name: user.displayName, email: user.email, balance: 0
                         });
                     }
                 });
-
             } else {
                 currentUser = null;
                 loginBtn.style.display = 'block';
                 menuBtn.style.display = 'none';
                 currentBalance = 0;
-                // Close sidebar if open when logged out
+                showSection('services-container'); // Reset view on logout
                 document.getElementById('sidebar').classList.remove('active');
                 document.getElementById('overlay').classList.remove('active');
             }
         });
 
-        loginBtn.addEventListener('click', () => {
-            signInWithPopup(auth, provider).catch((error) => alert(error.message));
-        });
+        loginBtn.addEventListener('click', () => signInWithPopup(auth, provider).catch(console.error));
+        logoutBtn.addEventListener('click', () => signOut(auth).then(()=>alert("Logged out")));
 
-        logoutBtn.addEventListener('click', () => {
-            signOut(auth).then(() => {
-                alert("Logged out successfully.");
-            }).catch((error) => {
-                alert("Error logging out.");
-            });
-        });
-
-        // --- PURCHASE LOGIC ---
-        window.buyService = async (serviceName, priceInt) => {
-            if (!currentUser) {
-                alert("Please Login first!");
-                return;
-            }
-            if (currentBalance < priceInt) {
-                alert(`Insufficient Balance! You have ₹${currentBalance}, but need ₹${priceInt}.`);
-                openPaymentModal();
-                return;
-            }
-            const confirmBuy = confirm(`Confirm purchase of ${serviceName} for ₹${priceInt}?`);
-            if (confirmBuy) {
-                const userRef = doc(db, "users", currentUser.uid);
-                const newBalance = currentBalance - priceInt;
-                try {
-                    await updateDoc(userRef, { balance: newBalance });
-                    alert(`Success! Order placed for ${serviceName}. Remaining: ₹${newBalance}`);
-                } catch (e) {
-                    console.error("Error", e);
-                    alert("Transaction failed.");
-                }
-            }
-        }
-
+        // --- NAVIGATION LOGIC ---
         window.toggleSidebar = () => {
             document.getElementById('sidebar').classList.toggle('active');
             document.getElementById('overlay').classList.toggle('active');
         }
 
-        window.openPaymentModal = () => {
-            document.getElementById('paymentModal').style.display = 'flex';
-            document.getElementById('sidebar').classList.remove('active'); // Close menu
-            document.getElementById('overlay').classList.remove('active');
-        }
-        
-        window.closeModal = () => {
-            document.getElementById('paymentModal').style.display = 'none';
+        window.showSection = (sectionId) => {
+            // Hide all sections first
+            document.getElementById('services-container').style.display = 'none';
+            document.getElementById('my-orders-section').style.display = 'none';
+            
+            // Show the target section
+            const target = document.getElementById(sectionId);
+            if(sectionId === 'services-container') {
+                target.style.display = 'grid'; // Grid for services
+            } else {
+                target.style.display = 'block'; // Block for tables
+            }
+            toggleSidebar(); // Close menu
         }
 
-        // --- UPDATED SERVICE LIST ---
+        // --- NEW ORDER LOGIC ---
+        
+        // 1. Open Modal and Setup Form
+        window.openOrderForm = (serviceName, pricePer1k) => {
+            if (!currentUser) return alert("Please Login first!");
+            
+            selectedServicePricePer1k = pricePer1k;
+            document.getElementById('orderServiceName').value = serviceName;
+            document.getElementById('orderPrice').innerText = "₹0";
+            document.getElementById('orderQty').value = "";
+            document.getElementById('orderLink').value = "";
+            
+            document.getElementById('orderModal').style.display = 'flex';
+        }
+
+        // 2. Real-time Price Calculation
+        window.calculatePrice = () => {
+            const qty = document.getElementById('orderQty').value;
+            if(qty > 0) {
+                // Formula: (PricePer1k * Quantity) / 1000
+                const total = (selectedServicePricePer1k * qty) / 1000;
+                document.getElementById('orderPrice').innerText = "₹" + total.toFixed(2);
+            } else {
+                document.getElementById('orderPrice').innerText = "₹0";
+            }
+        }
+
+        // 3. Submit Order to Database
+        window.submitOrder = async () => {
+            const qty = parseInt(document.getElementById('orderQty').value);
+            const link = document.getElementById('orderLink').value;
+            const serviceName = document.getElementById('orderServiceName').value;
+            const totalCost = (selectedServicePricePer1k * qty) / 1000;
+
+            // Validations
+            if (!link) return alert("Please enter the link!");
+            if (!qty || qty < 10) return alert("Minimum quantity is 10.");
+            if (currentBalance < totalCost) return alert(`Insufficient Balance! You need ₹${totalCost.toFixed(2)}.`);
+
+            if(!confirm(`Confirm Order?\nService: ${serviceName}\nQty: ${qty}\nCost: ₹${totalCost.toFixed(2)}`)) return;
+
+            // Show Processing State
+            const btn = document.getElementById('btnConfirmOrder');
+            btn.innerText = "Processing...";
+            btn.disabled = true;
+            
+            try {
+                // A. Deduct Money
+                const userRef = doc(db, "users", currentUser.uid);
+                await updateDoc(userRef, { balance: currentBalance - totalCost });
+
+                // B. Save Order Record
+                await addDoc(collection(db, "orders"), {
+                    userId: currentUser.uid,
+                    userName: currentUser.displayName,
+                    service: serviceName,
+                    link: link,
+                    quantity: qty,
+                    cost: totalCost,
+                    status: "Pending", // Default status
+                    timestamp: new Date()
+                });
+
+                alert("Order Placed Successfully! 🚀");
+                window.closeOrderModal();
+                
+            } catch (error) {
+                console.error(error);
+                alert("Order Failed: " + error.message);
+            } finally {
+                btn.innerText = "Place Order";
+                btn.disabled = false;
+            }
+        }
+
+        window.closeOrderModal = () => document.getElementById('orderModal').style.display = 'none';
+
+        // --- ORDER HISTORY LOGIC ---
+        window.loadOrderHistory = () => {
+            if(!currentUser) return;
+            const tbody = document.getElementById('orders-table-body');
+            tbody.innerHTML = "<tr><td colspan='5' style='text-align:center; padding:20px;'>Loading...</td></tr>";
+
+            // Query: Get orders for THIS user, ordered by newest first
+            const q = query(collection(db, "orders"), where("userId", "==", currentUser.uid), orderBy("timestamp", "desc"));
+            
+            onSnapshot(q, (snapshot) => {
+                tbody.innerHTML = ""; // Clear table
+                if(snapshot.empty) {
+                    tbody.innerHTML = "<tr><td colspan='5' style='text-align:center; padding:20px; color:#888;'>No orders found.</td></tr>";
+                    return;
+                }
+                
+                snapshot.forEach(doc => {
+                    const order = doc.data();
+                    
+                    // Status Colors
+                    let statusColor = '#ffc107'; // Pending (Yellow)
+                    if(order.status === 'Processing') statusColor = '#2196f3'; // Blue
+                    if(order.status === 'Completed') statusColor = '#00e676'; // Green
+                    if(order.status === 'Cancelled') statusColor = '#ff5252'; // Red
+
+                    const row = `
+                        <tr style="border-bottom:1px solid #222;">
+                            <td style="padding:15px; font-size:0.8rem; color:#666;">#${doc.id.substr(0,5)}</td>
+                            <td style="padding:15px;">${order.service}<br><span style="font-size:0.8rem; color:#888;">Qty: ${order.quantity}</span></td>
+                            <td style="padding:15px; font-size:0.8rem; color:var(--accent); max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                                <a href="${order.link}" target="_blank" style="color:var(--accent); text-decoration:none;">Link 🔗</a>
+                            </td>
+                            <td style="padding:15px; text-align:center;">₹${order.cost.toFixed(2)}</td>
+                            <td style="padding:15px; text-align:center;">
+                                <span style="color:${statusColor}; font-weight:bold; font-size:0.85rem; border:1px solid ${statusColor}; padding:2px 8px; border-radius:4px;">
+                                    ${order.status}
+                                </span>
+                            </td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                });
+            });
+        }
+
+        // --- PAYMENT MODALS ---
+        window.openPaymentModal = () => { document.getElementById('paymentModal').style.display = 'flex'; toggleSidebar(); }
+        window.closeModal = () => { document.getElementById('paymentModal').style.display = 'none'; }
+
+        // --- RENDER SERVICES ---
         const services = [
             {
                 category: "Basic (Cheapest)",
@@ -475,7 +622,7 @@
                     <h3>${item.name}</h3>
                     <div class="price">${item.label}</div>
                     <div class="desc">${item.desc}</div>
-                    <button class="btn-buy" onclick="buyService('${item.name}', ${item.price})">Purchase</button>
+                    <button class="btn-buy" onclick="openOrderForm('${item.name}', ${item.price})">Purchase</button>
                 `;
                 grid.appendChild(card);
             });
