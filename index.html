@@ -26,6 +26,7 @@
             margin: 0;
             padding: 0;
             overflow-x: hidden;
+            scroll-behavior: smooth; /* Smooth scrolling for menu links */
         }
 
         /* Navbar */
@@ -68,18 +69,19 @@
         }
         .btn-login:hover { background: var(--accent); color: white; box-shadow: 0 0 20px var(--accent-glow); }
 
-        /* Sidebar Profile */
+        /* Sidebar & Menu */
         .sidebar {
             position: fixed;
-            top: 0; right: -300px;
+            top: 0; right: -320px;
             width: 280px;
             height: 100%;
-            background: #111;
+            background: #0f0f0f;
             border-left: 1px solid #333;
             padding: 30px;
             transition: 0.4s;
             z-index: 200;
             box-shadow: -10px 0 30px rgba(0,0,0,0.8);
+            overflow-y: auto;
         }
         .sidebar.active { right: 0; }
 
@@ -93,22 +95,41 @@
             border-radius: 15px;
             text-align: center;
             border: 1px solid var(--gold);
-            margin-bottom: 20px;
+            margin-bottom: 25px;
             box-shadow: 0 0 15px rgba(255, 215, 0, 0.1);
         }
         .balance-label { font-size: 0.9rem; color: var(--text-muted); }
         .balance-amount { font-size: 2rem; color: var(--gold); font-weight: bold; margin: 5px 0; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
 
-        .btn-add-funds {
+        /* Menu Links */
+        .menu-list { list-style: none; padding: 0; margin: 0; }
+        .menu-item {
+            display: flex; align-items: center; gap: 15px;
+            padding: 15px;
+            color: var(--text-muted);
+            text-decoration: none;
+            border-radius: 10px;
+            transition: 0.3s;
+            margin-bottom: 10px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        .menu-item:hover { background: rgba(255,255,255,0.05); color: white; transform: translateX(5px); }
+        .menu-item i { width: 20px; text-align: center; color: var(--accent); }
+        
+        .btn-logout {
+            margin-top: 20px;
             width: 100%;
             padding: 12px;
-            background: var(--accent);
-            border: none;
-            color: white;
-            border-radius: 8px;
+            background: rgba(255, 82, 82, 0.1);
+            color: var(--danger);
+            border: 1px solid var(--danger);
+            border-radius: 10px;
             cursor: pointer;
-            font-weight: bold;
+            transition: 0.3s;
+            display: flex; align-items: center; justify-content: center; gap: 10px;
         }
+        .btn-logout:hover { background: var(--danger); color: white; }
 
         .overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -207,7 +228,7 @@
 </head>
 <body>
 
-    <header>
+    <header id="top">
         <div class="logo">Fame<span>X</span></div>
         <div class="nav-actions">
             <button class="btn-login" id="loginBtn">Login / Sign Up</button>
@@ -222,13 +243,33 @@
             <div class="user-name" id="sideUserName">Guest</div>
             <div style="font-size: 0.8rem; color: #888;" id="sideUserEmail">Not logged in</div>
         </div>
+        
         <div class="balance-card">
             <div class="balance-label">Current Balance</div>
             <div class="balance-amount">₹<span id="userBalance">0</span></div>
         </div>
-        <button class="btn-add-funds" onclick="openPaymentModal()">+ Add Funds</button>
-        <p style="color:#666; font-size:0.8rem; margin-top:15px; text-align:center;">
-            Min Deposit: ₹500<br>Credits added within 2-4 hours.
+
+        <div class="menu-list">
+            <a href="#services-container" class="menu-item" onclick="toggleSidebar()">
+                <i class="fas fa-layer-group"></i> Services
+            </a>
+            <div class="menu-item" onclick="openPaymentModal()">
+                <i class="fas fa-wallet"></i> Add Funds
+            </div>
+            <a href="#footer-support" class="menu-item" onclick="toggleSidebar()">
+                <i class="fas fa-headset"></i> Help & Support
+            </a>
+            <a href="#top" class="menu-item" onclick="toggleSidebar()">
+                <i class="fas fa-info-circle"></i> About FameX
+            </a>
+        </div>
+
+        <button class="btn-logout" id="logoutBtn">
+            <i class="fas fa-sign-out-alt"></i> Log Out
+        </button>
+
+        <p style="color:#444; font-size:0.7rem; margin-top:30px; text-align:center;">
+            v1.2.0 • Premium SMM
         </p>
     </div>
 
@@ -252,7 +293,7 @@
         </div>
     </div>
 
-    <footer>
+    <footer id="footer-support">
         <div class="social-links">
             <a href="https://t.me/therealghost_here" target="_blank" class="social-btn telegram"><i class="fab fa-telegram-plane"></i></a>
             <a href="https://www.instagram.com/lil.shiinee?igsh=MWpzMzdwazYxZ2hwNQ==" target="_blank" class="social-btn instagram"><i class="fab fa-instagram"></i></a>
@@ -264,8 +305,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-        import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-        // 1. IMPORT FIRESTORE
+        import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -280,15 +320,15 @@
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
-        const db = getFirestore(app); // Initialize DB
+        const db = getFirestore(app);
         const provider = new GoogleAuthProvider();
 
         let currentUser = null;
         let currentBalance = 0;
 
-        // --- AUTH & DATABASE LOGIC ---
         const loginBtn = document.getElementById('loginBtn');
         const menuBtn = document.getElementById('menuBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
 
         // Check Login State
         onAuthStateChanged(auth, async (user) => {
@@ -297,33 +337,34 @@
                 loginBtn.style.display = 'none';
                 menuBtn.style.display = 'block';
                 
-                // Update Sidebar Info
+                // Update Sidebar
                 document.getElementById('sideUserName').innerText = user.displayName;
                 document.getElementById('sideUserEmail').innerText = user.email;
                 document.getElementById('sideUserPic').src = user.photoURL;
 
-                // CHECK DB: Create User if new, Listen to Balance
+                // DB Logic
                 const userRef = doc(db, "users", user.uid);
-                
-                // Real-time listener for Balance
                 onSnapshot(userRef, (docSnap) => {
                     if (docSnap.exists()) {
                         currentBalance = docSnap.data().balance;
                         document.getElementById('userBalance').innerText = currentBalance;
                     } else {
-                        // Create new user doc if doesn't exist
                         setDoc(userRef, {
                             name: user.displayName,
                             email: user.email,
-                            balance: 0 // Start with 0
+                            balance: 0
                         });
                     }
                 });
 
             } else {
+                currentUser = null;
                 loginBtn.style.display = 'block';
                 menuBtn.style.display = 'none';
                 currentBalance = 0;
+                // Close sidebar if open when logged out
+                document.getElementById('sidebar').classList.remove('active');
+                document.getElementById('overlay').classList.remove('active');
             }
         });
 
@@ -331,29 +372,32 @@
             signInWithPopup(auth, provider).catch((error) => alert(error.message));
         });
 
-        // --- PURCHASE LOGIC (The Gatekeeper) ---
+        logoutBtn.addEventListener('click', () => {
+            signOut(auth).then(() => {
+                alert("Logged out successfully.");
+            }).catch((error) => {
+                alert("Error logging out.");
+            });
+        });
+
+        // --- PURCHASE LOGIC ---
         window.buyService = async (serviceName, priceInt) => {
             if (!currentUser) {
                 alert("Please Login first!");
                 return;
             }
-
             if (currentBalance < priceInt) {
-                alert(`Insufficient Balance! You have ₹${currentBalance}, but need ₹${priceInt}. Please Add Funds.`);
-                openPaymentModal(); // Show QR Code
+                alert(`Insufficient Balance! You have ₹${currentBalance}, but need ₹${priceInt}.`);
+                openPaymentModal();
                 return;
             }
-
-            // Deduct Balance
             const confirmBuy = confirm(`Confirm purchase of ${serviceName} for ₹${priceInt}?`);
             if (confirmBuy) {
                 const userRef = doc(db, "users", currentUser.uid);
                 const newBalance = currentBalance - priceInt;
-                
                 try {
                     await updateDoc(userRef, { balance: newBalance });
                     alert(`Success! Order placed for ${serviceName}. Remaining: ₹${newBalance}`);
-                    // Here you would send the order to your Admin panel
                 } catch (e) {
                     console.error("Error", e);
                     alert("Transaction failed.");
@@ -361,7 +405,6 @@
             }
         }
 
-        // --- UI LOGIC ---
         window.toggleSidebar = () => {
             document.getElementById('sidebar').classList.toggle('active');
             document.getElementById('overlay').classList.toggle('active');
@@ -369,28 +412,50 @@
 
         window.openPaymentModal = () => {
             document.getElementById('paymentModal').style.display = 'flex';
-            toggleSidebar(); // Close sidebar if open
+            document.getElementById('sidebar').classList.remove('active'); // Close menu
+            document.getElementById('overlay').classList.remove('active');
         }
         
         window.closeModal = () => {
             document.getElementById('paymentModal').style.display = 'none';
         }
 
-        // --- SERVICE LIST RENDER ---
+        // --- UPDATED SERVICE LIST ---
         const services = [
-            { category: "Basic (Cheapest)", items: [
-                { name: "Flowers", price: 99, label: "₹99 / 1k", desc: "Standard quality" },
-                { name: "Instagram Likes", price: 29, label: "₹29 / 1k", desc: "Instant start" },
-                { name: "Views", price: 1, label: "₹1 / 1k", desc: "Massive reach" }
-            ]},
-            { category: "High Quality", items: [
-                { name: "Followers", price: 249, label: "₹249 / 1k", desc: "Stable retention" },
-                { name: "Likes", price: 49, label: "₹49 / 1k", desc: "Real looking" }
-            ]},
-            { category: "Premium", items: [
-                { name: "Followers VIP", price: 599, label: "₹599 / 1k", desc: "High rich + impression" },
-                { name: "Verified Views", price: 19, label: "₹19 / 1k", desc: "Verified reach" }
-            ]}
+            {
+                category: "Basic (Cheapest)",
+                items: [
+                    { name: "Flowers", price: 99, label: "₹99 / 1k", desc: "Basic quality" },
+                    { name: "Instagram Likes", price: 29, label: "₹29 / 1k", desc: "Fast delivery" },
+                    { name: "Views", price: 1, label: "₹1 / 1k", desc: "High speed" },
+                    { name: "Share", price: 3, label: "₹3 / 1k", desc: "Boost reach" }
+                ]
+            },
+            {
+                category: "High Quality (Non-Drop)",
+                items: [
+                    { name: "Followers HQ", price: 249, label: "₹249 / 1k", desc: "Stable non-drop" },
+                    { name: "Likes HQ", price: 49, label: "₹49 / 1k", desc: "Real profiles" },
+                    { name: "Views HQ", price: 5, label: "₹5 / 1k", desc: "Premium reach" },
+                    { name: "Shares HQ", price: 15, label: "₹15 / 1k", desc: "Viral boost" }
+                ]
+            },
+            {
+                category: "Premium (Verified + Real)",
+                items: [
+                    { name: "Followers Premium", price: 599, label: "₹599 / 1k", desc: "Verified + Rich accounts" },
+                    { name: "Likes Premium", price: 99, label: "₹99 / 1k", desc: "Genuine interaction" },
+                    { name: "Views Premium", price: 19, label: "₹19 / 1k", desc: "High retention" },
+                    { name: "Shares Premium", price: 49, label: "₹49 / 1k", desc: "Executive tier" }
+                ]
+            },
+            {
+                category: "Comments",
+                items: [
+                    { name: "Normal Comments", price: 499, label: "₹499 / 1k", desc: "Random positive text" },
+                    { name: "Custom Text", price: 1499, label: "₹1499 / 1k", desc: "You provide the text" }
+                ]
+            }
         ];
 
         const container = document.getElementById('services-container');
