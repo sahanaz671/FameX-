@@ -92,15 +92,30 @@
         </div>
 
         <div id="orders" class="section">
-            <h2>Recent Orders</h2>
-            <p style="text-align:center; color:#888;">(Order tracking features coming in next update)</p>
+            <h2>Manage Orders</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>User</th>
+                        <th>Service / Link</th>
+                        <th>Cost</th>
+                        <th>Status</th>
+                        <th>Update</th>
+                    </tr>
+                </thead>
+                <tbody id="orders-table-body">
+                    <tr><td colspan="6" style="text-align:center;">Listening for new orders...</td></tr>
+                </tbody>
+            </table>
         </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-        import { getFirestore, collection, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+        // UPDATED IMPORTS: Added onSnapshot, query, orderBy
+        import { getFirestore, collection, getDocs, doc, updateDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
         // CONFIG
         const firebaseConfig = {
@@ -135,6 +150,7 @@
                     loginScreen.style.display = 'none';
                     dashboard.style.display = 'block';
                     loadUsers(); 
+                    loadOrders(); // Start listening for orders!
                 } else {
                     alert("ACCESS DENIED: You are not the authorized Administrator.");
                     await auth.signOut();
@@ -198,6 +214,74 @@
                 loadUsers(); // Refresh the list
             } catch (e) {
                 alert("Error updating balance: " + e.message);
+            }
+        }
+
+        // --- 3. REAL-TIME ORDER TRACKER ---
+        window.loadOrders = () => {
+            const tableBody = document.getElementById('orders-table-body');
+            
+            // Listen to "orders" collection, ordered by newest first
+            const q = query(collection(db, "orders"), orderBy("timestamp", "desc"));
+
+            // onSnapshot runs every time the database changes!
+            onSnapshot(q, (snapshot) => {
+                tableBody.innerHTML = ""; // Clear table to prevent duplicates
+                
+                if (snapshot.empty) {
+                    tableBody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No orders yet.</td></tr>';
+                    return;
+                }
+
+                snapshot.forEach((docSnap) => {
+                    const order = docSnap.data();
+                    const orderId = docSnap.id;
+                    
+                    // Color-code the status
+                    let statusColor = '#ffc107'; // Yellow (Pending)
+                    if(order.status === 'Processing') statusColor = '#2196f3'; // Blue
+                    if(order.status === 'Completed') statusColor = '#00e676'; // Green
+                    if(order.status === 'Cancelled') statusColor = '#ff5252'; // Red
+
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td style="font-size:0.8rem; color:#666;">${orderId.substr(0, 5)}...</td>
+                        <td>${order.userName}<br><span style="font-size:0.8rem; color:#888;">${order.userId.substr(0,5)}</span></td>
+                        <td>
+                            ${order.service}<br>
+                            <a href="${order.link}" target="_blank" style="color:var(--accent); font-size:0.8rem;">View Link 🔗</a>
+                            <br><span style="font-size:0.8rem;">Qty: ${order.quantity}</span>
+                        </td>
+                        <td style="color:var(--gold);">₹${order.cost}</td>
+                        <td>
+                            <select id="status-${orderId}" style="background:#222; color:${statusColor}; border:1px solid #444; padding:5px; border-radius:5px; font-weight:bold;">
+                                <option value="Pending" ${order.status === 'Pending' ? 'selected' : ''}>Pending</option>
+                                <option value="Processing" ${order.status === 'Processing' ? 'selected' : ''}>Processing</option>
+                                <option value="Completed" ${order.status === 'Completed' ? 'selected' : ''}>Completed</option>
+                                <option value="Cancelled" ${order.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="btn" style="padding:5px 10px; font-size:0.8rem;" onclick="updateOrderStatus('${orderId}')">Update</button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            });
+        }
+
+        // --- 4. UPDATE STATUS FUNCTION ---
+        window.updateOrderStatus = async (orderId) => {
+            const newStatus = document.getElementById(`status-${orderId}`).value;
+            const orderRef = doc(db, "orders", orderId);
+
+            try {
+                await updateDoc(orderRef, { status: newStatus });
+                alert(`Order updated to ${newStatus}!`);
+                // No need to reload() because onSnapshot will update the UI automatically! 🪄
+            } catch (e) {
+                console.error("Error:", e);
+                alert("Update failed.");
             }
         }
 
