@@ -436,7 +436,7 @@
         const menuBtn = document.getElementById('menuBtn');
         const logoutBtn = document.getElementById('logoutBtn');
 
-        // AUTH
+        // AUTH & DATABASE LISTENER
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 currentUser = user;
@@ -448,11 +448,26 @@
                 document.getElementById('sideUserPic').src = user.photoURL;
 
                 const userRef = doc(db, "users", user.uid);
+                
+                // ⚡ REAL-TIME USER DATA & FORCE LOGOUT CHECK ⚡
                 onSnapshot(userRef, (docSnap) => {
                     if (docSnap.exists()) {
-                        currentBalance = docSnap.data().balance;
+                        const data = docSnap.data();
+
+                        // 1. Check for Force Logout (Kick)
+                        if (data.forceLogout) {
+                            alert("You have been logged out by the Administrator.");
+                            // Reset the flag and sign out
+                            updateDoc(userRef, { forceLogout: false });
+                            signOut(auth).then(() => window.location.reload());
+                            return;
+                        }
+
+                        // 2. Update Balance
+                        currentBalance = data.balance;
                         document.getElementById('userBalance').innerText = currentBalance;
                     } else {
+                        // Create profile for new users
                         setDoc(userRef, { name: user.displayName, email: user.email, balance: 0 });
                     }
                 });
@@ -512,232 +527,4 @@
         window.submitOrder = async () => {
             const qty = parseInt(document.getElementById('orderQty').value);
             const link = document.getElementById('orderLink').value;
-            const serviceName = document.getElementById('orderServiceName').value;
-            const totalCost = (selectedServicePricePer1k * qty) / 1000;
-
-            if (!link) return alert("Please enter the link!");
-            if (!qty || qty < 10) return alert("Minimum quantity is 10.");
-            if (currentBalance < totalCost) return alert(`Insufficient Balance! You need ₹${totalCost.toFixed(2)}.`);
-
-            if(!confirm(`Confirm Order?\nService: ${serviceName}\nQty: ${qty}\nCost: ₹${totalCost.toFixed(2)}`)) return;
-
-            const btn = document.getElementById('btnConfirmOrder');
-            btn.innerText = "Processing...";
-            btn.disabled = true;
-            
-            try {
-                const userRef = doc(db, "users", currentUser.uid);
-                await updateDoc(userRef, { balance: currentBalance - totalCost });
-
-                await addDoc(collection(db, "orders"), {
-                    userId: currentUser.uid,
-                    userName: currentUser.displayName,
-                    service: serviceName,
-                    link: link,
-                    quantity: qty,
-                    cost: totalCost,
-                    status: "Pending",
-                    timestamp: new Date()
-                });
-
-                alert("Order Placed Successfully! 🚀");
-                window.closeOrderModal();
-            } catch (error) {
-                console.error(error);
-                alert("Order Failed: " + error.message);
-            } finally {
-                btn.innerText = "Place Order";
-                btn.disabled = false;
-            }
-        }
-
-        window.closeOrderModal = () => document.getElementById('orderModal').style.display = 'none';
-
-        // --- REAL-TIME ORDER HISTORY (Sorting Removed for Safety) ---
-        window.loadOrderHistory = () => {
-            if(!currentUser) return;
-            const tbody = document.getElementById('orders-table-body');
-            tbody.innerHTML = "<tr><td colspan='5' style='text-align:center; padding:20px;'>Loading...</td></tr>";
-
-            const q = query(collection(db, "orders"), where("userId", "==", currentUser.uid));
-            
-            onSnapshot(q, (snapshot) => {
-                tbody.innerHTML = "";
-                if(snapshot.empty) {
-                    tbody.innerHTML = "<tr><td colspan='5' style='text-align:center; padding:20px; color:#888;'>No orders found.</td></tr>";
-                    return;
-                }
-                
-                snapshot.forEach(doc => {
-                    const order = doc.data();
-                    let statusColor = '#ffc107'; // Pending
-                    if(order.status === 'Processing') statusColor = '#2196f3';
-                    if(order.status === 'Completed') statusColor = '#00e676';
-                    if(order.status === 'Cancelled') statusColor = '#ff5252';
-
-                    const row = `
-                        <tr style="border-bottom:1px solid #222;">
-                            <td style="padding:15px; font-size:0.8rem; color:#666;">#${doc.id.substr(0,5)}</td>
-                            <td style="padding:15px;">${order.service}<br><span style="font-size:0.8rem; color:#888;">Qty: ${order.quantity}</span></td>
-                            <td style="padding:15px; font-size:0.8rem; color:var(--accent); max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                                <a href="${order.link}" target="_blank" style="color:var(--accent); text-decoration:none;">Link 🔗</a>
-                            </td>
-                            <td style="padding:15px; text-align:center;">₹${order.cost.toFixed(2)}</td>
-                            <td style="padding:15px; text-align:center;">
-                                <span style="color:${statusColor}; font-weight:bold; font-size:0.85rem; border:1px solid ${statusColor}; padding:2px 8px; border-radius:4px;">
-                                    ${order.status}
-                                </span>
-                            </td>
-                        </tr>
-                    `;
-                    tbody.innerHTML += row;
-                });
-            });
-        }
-
-        // --- PAYMENT STATUS LOGIC (New) ---
-        window.loadPaymentHistory = () => {
-            if(!currentUser) return;
-            const tbody = document.getElementById('payment-table-body');
-            tbody.innerHTML = "<tr><td colspan='4' style='text-align:center; padding:20px;'>Loading...</td></tr>";
-
-            const q = query(collection(db, "payment_verifications"), where("userId", "==", currentUser.uid));
-            
-            onSnapshot(q, (snapshot) => {
-                tbody.innerHTML = "";
-                if(snapshot.empty) {
-                    tbody.innerHTML = "<tr><td colspan='4' style='text-align:center; padding:20px; color:#888;'>No payment history found.</td></tr>";
-                    return;
-                }
-                
-                snapshot.forEach(doc => {
-                    const payment = doc.data();
-                    let statusColor = '#ffc107'; // Checking
-                    if(payment.status === 'Success' || payment.status === 'Approved') statusColor = '#00e676';
-                    if(payment.status === 'Rejected') statusColor = '#ff5252';
-                    
-                    const date = payment.timestamp ? new Date(payment.timestamp.seconds * 1000).toLocaleDateString() : 'N/A';
-
-                    const row = `
-                        <tr style="border-bottom:1px solid #222;">
-                            <td style="padding:15px; font-size:0.8rem; color:#888;">${date}</td>
-                            <td style="padding:15px; color:var(--gold);">₹${payment.amount}</td>
-                            <td style="padding:15px; font-size:0.8rem;">${payment.utr}<br><span style="color:#666;">${payment.senderName}</span></td>
-                            <td style="padding:15px; text-align:center;">
-                                <span style="color:${statusColor}; font-weight:bold; font-size:0.85rem; border:1px solid ${statusColor}; padding:2px 8px; border-radius:4px;">
-                                    ${payment.status}
-                                </span>
-                            </td>
-                        </tr>
-                    `;
-                    tbody.innerHTML += row;
-                });
-            });
-        }
-
-        // --- VERIFY PAYMENT LOGIC ---
-        window.openPaymentModal = () => { document.getElementById('paymentModal').style.display = 'flex'; toggleSidebar(); }
-        window.closeModal = () => { document.getElementById('paymentModal').style.display = 'none'; }
-        
-        window.openVerifyModal = () => { document.getElementById('verifyPaymentModal').style.display = 'flex'; toggleSidebar(); }
-        window.closeVerifyModal = () => { document.getElementById('verifyPaymentModal').style.display = 'none'; }
-
-        window.submitPaymentVerification = async () => {
-            const amount = document.getElementById('verifyAmount').value;
-            const sender = document.getElementById('verifySender').value;
-            const utr = document.getElementById('verifyUTR').value;
-
-            if(!amount || !sender || !utr) return alert("Please fill all fields.");
-
-            const btn = document.getElementById('btnSubmitVerify');
-            btn.innerText = "Submitting...";
-            btn.disabled = true;
-
-            try {
-                // Save to NEW collection: 'payment_verifications'
-                await addDoc(collection(db, "payment_verifications"), {
-                    userId: currentUser.uid,
-                    userName: currentUser.displayName,
-                    userEmail: currentUser.email,
-                    amount: amount,
-                    senderName: sender,
-                    utr: utr,
-                    status: "Checking",
-                    timestamp: new Date()
-                });
-
-                alert("Verification Submitted! Status: Checking.");
-                window.closeVerifyModal();
-            } catch (e) {
-                console.error(e);
-                alert("Error submitting: " + e.message);
-            } finally {
-                btn.innerText = "Submit for Verification";
-                btn.disabled = false;
-            }
-        }
-
-        // --- SERVICES ---
-        const services = [
-            {
-                category: "Basic (Cheapest)",
-                items: [
-                    { name: "Flowers", price: 99, label: "₹99 / 1k", desc: "Basic quality" },
-                    { name: "Instagram Likes", price: 29, label: "₹29 / 1k", desc: "Fast delivery" },
-                    { name: "Views", price: 1, label: "₹1 / 1k", desc: "High speed" },
-                    { name: "Share", price: 3, label: "₹3 / 1k", desc: "Boost reach" }
-                ]
-            },
-            {
-                category: "High Quality (Non-Drop)",
-                items: [
-                    { name: "Followers HQ", price: 249, label: "₹249 / 1k", desc: "Stable non-drop" },
-                    { name: "Likes HQ", price: 49, label: "₹49 / 1k", desc: "Real profiles" },
-                    { name: "Views HQ", price: 5, label: "₹5 / 1k", desc: "Premium reach" },
-                    { name: "Shares HQ", price: 15, label: "₹15 / 1k", desc: "Viral boost" }
-                ]
-            },
-            {
-                category: "Premium (Verified + Real)",
-                items: [
-                    { name: "Followers Premium", price: 599, label: "₹599 / 1k", desc: "Verified + Rich accounts" },
-                    { name: "Likes Premium", price: 99, label: "₹99 / 1k", desc: "Genuine interaction" },
-                    { name: "Views Premium", price: 19, label: "₹19 / 1k", desc: "High retention" },
-                    { name: "Shares Premium", price: 49, label: "₹49 / 1k", desc: "Executive tier" }
-                ]
-            },
-            {
-                category: "Comments",
-                items: [
-                    { name: "Normal Comments", price: 499, label: "₹499 / 1k", desc: "Random positive text" },
-                    { name: "Custom Text", price: 1499, label: "₹1499 / 1k", desc: "You provide the text" }
-                ]
-            }
-        ];
-
-        const container = document.getElementById('services-container');
-        services.forEach(cat => {
-            const title = document.createElement('div');
-            title.className = 'category-title';
-            title.innerText = cat.category;
-            container.appendChild(title);
-
-            const grid = document.createElement('div');
-            grid.className = 'grid';
-
-            cat.items.forEach(item => {
-                const card = document.createElement('div');
-                card.className = 'card';
-                card.innerHTML = `
-                    <h3>${item.name}</h3>
-                    <div class="price">${item.label}</div>
-                    <div class="desc">${item.desc}</div>
-                    <button class="btn-buy" onclick="openOrderForm('${item.name}', ${item.price})">Purchase</button>
-                `;
-                grid.appendChild(card);
-            });
-            container.appendChild(grid);
-        });
-    </script>
-</body>
-</html>
+            const serviceName =
