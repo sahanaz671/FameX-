@@ -1,173 +1,112 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FameX | Premium Instagram Growth</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
-        body { background-color: #020617; color: #f8fafc; font-family: 'Plus Jakarta Sans', sans-serif; }
-        .gold-grad { background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .card { background: #0f172a; border: 1px solid #1e293b; border-radius: 1.5rem; }
-        .btn-gold { background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); color: #000; font-weight: 800; transition: all 0.3s; cursor: pointer; }
-        .btn-gold:hover { transform: scale(1.02); opacity: 0.9; }
-        .input-dark { background: #020617; border: 1px solid #334155; padding: 0.75rem; border-radius: 0.75rem; width: 100%; outline: none; color: white; }
-    </style>
-</head>
-<body class="min-h-screen flex flex-col">
+<script>
+    // FINAL FIXED CONFIG - No more typos
+    const firebaseConfig = {
+        apiKey: "AIzaSyAN_hd0rr46X2Sl0Z0cKwe0pAV12sh6iAI",
+        authDomain: "famex-4cb1e.firebaseapp.com",
+        projectId: "famex-4cb1e",
+        storageBucket: "famex-4cb1e.firebasestorage.app",
+        messagingSenderId: "395925089964",
+        appId: "1:395925089964:web:551ef2009aa25d09743909",
+        measurementId: "G-S1T0L618XL"
+    };
 
-    <nav class="max-w-5xl mx-auto w-full flex justify-between items-center p-6">
-        <h1 class="text-3xl font-extrabold tracking-tighter italic gold-grad">FAMEX</h1>
-        <div id="nav-info" class="flex items-center gap-4">
-            <div id="balance-display" class="hidden bg-slate-900/50 border border-slate-700 px-5 py-2 rounded-full">
-                <span class="text-yellow-500 font-extrabold text-lg">₹<span id="user-balance">0</span></span>
-            </div>
-            <button id="logout-btn" class="hidden text-xs font-bold text-slate-500 uppercase hover:text-white">Logout</button>
-        </div>
-    </nav>
+    // Initialize
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
 
-    <main class="max-w-2xl mx-auto w-full p-4 flex-grow">
-        <div id="auth-forms" class="card p-10 shadow-2xl">
-            <h2 class="text-3xl font-black mb-2">FameX Login</h2>
-            <p class="text-slate-400 mb-8 text-sm uppercase tracking-widest">Premium SMM Panel</p>
-            <div class="space-y-4">
-                <input type="email" id="email" placeholder="Email Address" class="input-dark">
-                <input type="password" id="pass" placeholder="Password" class="input-dark">
-                <div class="flex gap-3 pt-4">
-                    <button onclick="handleAuth('login')" class="flex-1 btn-gold py-4 rounded-xl">Login</button>
-                    <button onclick="handleAuth('signup')" class="flex-1 bg-slate-800 py-4 rounded-xl font-bold">Register</button>
-                </div>
-            </div>
-        </div>
+    function handleAuth(type) {
+        const email = document.getElementById('email').value;
+        const pass = document.getElementById('pass').value;
+        
+        if(!email || !pass) {
+            alert("Please enter both Email and Password");
+            return;
+        }
+        
+        if (type === 'signup') {
+            alert("Creating account... please wait.");
+            auth.createUserWithEmailAndPassword(email, pass).then(cred => {
+                db.collection('users').doc(cred.user.uid).set({ balance: 0 });
+                alert("Account created successfully!");
+            }).catch(e => alert("Signup Error: " + e.message));
+        } else {
+            alert("Logging in...");
+            auth.signInWithEmailAndPassword(email, pass).catch(e => alert("Login Failed: " + e.message));
+        }
+    }
 
-        <div id="dashboard" class="hidden space-y-6">
-            <div class="grid grid-cols-2 gap-4">
-                <button onclick="showPanel('order')" class="card p-6 text-center hover:border-yellow-500 transition">⚡ New Order</button>
-                <button onclick="showPanel('funds')" class="card p-6 text-center text-green-400 font-bold hover:border-green-500 transition">💰 Add Funds</button>
-            </div>
-
-            <div id="order-panel" class="card p-8">
-                <h3 class="text-xl font-black mb-6 gold-grad italic">BOOST YOUR GROWTH</h3>
-                <label class="text-xs font-bold text-slate-500 uppercase ml-1">Select Service</label>
-                <select id="service-select" class="input-dark mt-1 mb-4">
-                    <optgroup label="Popular Services">
-                        <option value="99">Instagram Followers - ₹99/1k</option>
-                        <option value="29">Instagram Likes - ₹29/1k</option>
-                        <option value="1">Instagram Views - ₹1/1k</option>
-                    </optgroup>
-                    <optgroup label="High Quality (Refill)">
-                        <option value="249">HQ Followers (30d Refill) - ₹249/1k</option>
-                        <option value="49">HQ Likes - ₹49/1k</option>
-                    </optgroup>
-                </select>
-                <label class="text-xs font-bold text-slate-500 uppercase ml-1">Profile/Post Link</label>
-                <input type="text" id="target-link" placeholder="https://instagram.com/..." class="input-dark mt-1 mb-4">
-                <label class="text-xs font-bold text-slate-500 uppercase ml-1">Quantity</label>
-                <input type="number" id="quantity" placeholder="1000" value="1000" class="input-dark mt-1 mb-6">
-                <button onclick="submitOrder()" class="w-full btn-gold py-5 rounded-2xl text-lg">Launch Campaign</button>
-            </div>
-
-            <div id="funds-panel" class="hidden card p-8 text-center">
-                <h3 class="text-2xl font-black mb-2 text-green-400">RECHARGE</h3>
-                <p class="text-slate-400 text-sm mb-6">Min Deposit: ₹500</p>
-                <div class="bg-white p-3 inline-block rounded-2xl mb-6 shadow-xl">
-                   <img src="https://imagefa.st/image/xr5ox" class="w-56 h-56 rounded-lg">
-                </div>
-                <p class="text-xs text-slate-500 mb-4 px-6">Pay via PhonePe QR and enter Transaction ID below.</p>
-                <input type="text" id="utr-id" placeholder="UTR / Transaction ID" class="input-dark text-center mb-4">
-                <button onclick="submitDeposit()" class="w-full bg-green-600 hover:bg-green-500 py-4 rounded-xl font-bold transition">Confirm Payment</button>
-            </div>
-        </div>
-    </main>
-
-    <footer class="p-10 text-center text-slate-600 text-xs font-bold tracking-widest">
-        © 2025 FAMEX PREMIUM PANEL
-    </footer>
-
-    <script>
-        // Corrected Firebase Config
-        const firebaseConfig = {
-‎  apiKey: "AIzaSyAN_hd8rr46X25lOZ0cKwe6pAVl2sh61AI",
-‎  authDomain: "famex-4cb1e.firebaseapp.com",
-‎  projectId: "famex-4cb1e",
-‎  storageBucket: "famex-4cb1e.firebasestorage.app",
-‎  messagingSenderId: "395925089964",
-‎  appId: "1:395925089964:web:551ef2089aa25d09743909",
-‎  measurementId: "G-S1T0L618XL"
-‎};
-
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
-
-        function handleAuth(type) {
-            const email = document.getElementById('email').value;
-            const pass = document.getElementById('pass').value;
-            if(!email || !pass) return alert("Enter email & password");
+    auth.onAuthStateChanged(user => {
+        if (user) {
+            console.log("Logged in:", user.email);
+            document.getElementById('auth-forms').classList.add('hidden');
+            document.getElementById('dashboard').classList.remove('hidden');
+            document.getElementById('balance-display').classList.remove('hidden');
+            document.getElementById('logout-btn').classList.remove('hidden');
             
-            if (type === 'signup') {
-                auth.createUserWithEmailAndPassword(email, pass).then(cred => {
-                    db.collection('users').doc(cred.user.uid).set({ balance: 0 });
-                }).catch(e => alert("Error: " + e.message));
-            } else {
-                auth.signInWithEmailAndPassword(email, pass).catch(e => alert("Login Failed: " + e.message));
-            }
-        }
-
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                document.getElementById('auth-forms').classList.add('hidden');
-                document.getElementById('dashboard').classList.remove('hidden');
-                document.getElementById('balance-display').classList.remove('hidden');
-                document.getElementById('logout-btn').classList.remove('hidden');
-                db.collection('users').doc(user.uid).onSnapshot(doc => {
-                    if(doc.exists) document.getElementById('user-balance').innerText = doc.data().balance;
-                });
-            }
-        });
-
-        function showPanel(type) {
-            document.getElementById('order-panel').classList.toggle('hidden', type !== 'order');
-            document.getElementById('funds-panel').classList.toggle('hidden', type !== 'funds');
-        }
-
-        async function submitOrder() {
-            const user = auth.currentUser;
-            const price = parseInt(document.getElementById('service-select').value);
-            const qty = parseInt(document.getElementById('quantity').value);
-            const link = document.getElementById('target-link').value;
-            const cost = (price / 1000) * qty;
-
-            if(!link) return alert("Enter IG Link");
-
-            const doc = await db.collection('users').doc(user.uid).get();
-            const currentBal = doc.data().balance;
-
-            if (currentBal >= cost) {
-                await db.collection('users').doc(user.uid).update({ balance: currentBal - cost });
-                await db.collection('orders').add({
-                    uid: user.uid, email: user.email, link: link,
-                    cost: cost, status: 'Pending', timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                alert("Order Placed Successfully!");
-            } else { alert("Insufficient Balance! Please Add Funds."); }
-        }
-
-        function submitDeposit() {
-            const utr = document.getElementById('utr-id').value;
-            if(!utr) return alert("Enter Transaction ID");
-            db.collection('deposits').add({
-                uid: auth.currentUser.uid, email: auth.currentUser.email,
-                utr: utr, status: 'Pending', timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            // Real-time balance update
+            db.collection('users').doc(user.uid).onSnapshot(doc => {
+                if(doc.exists) {
+                    document.getElementById('user-balance').innerText = doc.data().balance;
+                } else {
+                    // Create doc if it doesn't exist for Google users
+                    db.collection('users').doc(user.uid).set({ balance: 0 });
+                }
             });
-            alert("Verification started. Your balance will update in 15 minutes.");
         }
+    });
 
-        document.getElementById('logout-btn').onclick = () => auth.signOut().then(() => location.reload());
-    </script>
-</body>
-</html>
+    function showPanel(type) {
+        document.getElementById('order-panel').classList.toggle('hidden', type !== 'order');
+        document.getElementById('funds-panel').classList.toggle('hidden', type !== 'funds');
+    }
+
+    async function submitOrder() {
+        const user = auth.currentUser;
+        const price = parseInt(document.getElementById('service-select').value);
+        const qty = parseInt(document.getElementById('quantity').value);
+        const link = document.getElementById('target-link').value;
+        const cost = (price / 1000) * qty;
+
+        if(!link) return alert("Please enter an Instagram Link");
+        if(qty < 10) return alert("Minimum quantity is 10");
+
+        const doc = await db.collection('users').doc(user.uid).get();
+        const currentBal = doc.data().balance || 0;
+
+        if (currentBal >= cost) {
+            await db.collection('users').doc(user.uid).update({ balance: currentBal - cost });
+            await db.collection('orders').add({
+                uid: user.uid, email: user.email, link: link,
+                quantity: qty, cost: cost, status: 'Pending', 
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            alert("Order Placed Successfully!");
+        } else { 
+            alert("Insufficient Balance! You need ₹" + cost.toFixed(2)); 
+        }
+    }
+
+    function submitDeposit() {
+        const utr = document.getElementById('utr-id').value;
+        if(!utr || utr.length < 8) return alert("Enter a valid Transaction ID / UTR");
+        
+        db.collection('deposits').add({
+            uid: auth.currentUser.uid, 
+            email: auth.currentUser.email,
+            utr: utr, 
+            status: 'Pending', 
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        }).then(() => {
+            alert("Request sent! Admin will verify and add funds within 15-30 minutes.");
+            document.getElementById('utr-id').value = "";
+        });
+    }
+
+    document.getElementById('logout-btn').onclick = () => {
+        auth.signOut().then(() => {
+            alert("Logged out!");
+            location.reload();
+        });
+    };
+</script>
