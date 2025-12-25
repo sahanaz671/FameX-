@@ -213,6 +213,12 @@
         
         .close-btn { background: #333; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; margin-top: 15px; }
 
+        /* Helpers */
+        .warning-box {
+            background:rgba(255, 193, 7, 0.1); border:1px solid #ffc107; color:#ffc107; 
+            padding:10px; border-radius:8px; font-size:0.85rem; margin-bottom:20px; text-align: left;
+        }
+
         /* Footer */
         footer { background: rgba(10, 10, 10, 0.8); padding: 60px 20px; text-align: center; margin-top: 80px; border-top: 1px solid rgba(255, 255, 255, 0.05); }
         .social-links { display: flex; justify-content: center; gap: 25px; margin-bottom: 30px; }
@@ -264,6 +270,9 @@
             <div class="menu-item" onclick="openPaymentModal()">
                 <i class="fas fa-wallet"></i> Add Funds
             </div>
+            <div class="menu-item" onclick="openVerifyModal()">
+                <i class="fas fa-file-invoice-dollar"></i> Verify Payment
+            </div>
             <a href="#footer-support" class="menu-item" onclick="toggleSidebar()">
                 <i class="fas fa-headset"></i> Help & Support
             </a>
@@ -274,7 +283,7 @@
         </button>
 
         <p style="color:#444; font-size:0.7rem; margin-top:30px; text-align:center;">
-            v1.2.0 • Premium SMM
+            v1.3.0 • Premium SMM
         </p>
     </div>
 
@@ -300,7 +309,7 @@
                     </tr>
                 </thead>
                 <tbody id="orders-table-body">
-                    </tbody>
+                </tbody>
             </table>
         </div>
     </div>
@@ -308,12 +317,35 @@
     <div class="modal" id="paymentModal">
         <div class="modal-content">
             <h2>Add Funds</h2>
-            <p style="color:var(--text-muted)">Minimum Deposit: ₹500</p>
+            <div class="warning-box">
+                <i class="fas fa-exclamation-circle"></i> <strong>Rules:</strong><br>
+                • Minimum Deposit: <strong>₹500</strong><br>
+                • <strong>PhonePe ONLY</strong>. No Paytm/GPay.<br>
+                • Verification takes 2-4 hours.
+            </div>
             <img src="https://imagefa.st/images/2025/12/25/PhonePeQR_India-Post-Payment-Bank---02681.png" alt="QR Code" class="qr-code">
             <p style="color: var(--text-muted); font-size: 0.9rem;">
-                Scan & Pay. Send screenshot + Transaction ID to WhatsApp support to update balance.
+                Scan & Pay. Then use the "Verify Payment" menu to submit your Transaction ID.
             </p>
             <button class="close-btn" onclick="closeModal()">Close</button>
+        </div>
+    </div>
+
+    <div class="modal" id="verifyPaymentModal">
+        <div class="modal-content" style="text-align:left; max-width:400px;">
+            <h2 style="text-align:center;">Verify Payment</h2>
+            
+            <label style="color:var(--text-muted); font-size:0.9rem;">Amount Paid (₹)</label>
+            <input type="number" id="verifyAmount" placeholder="e.g. 500" style="width:100%; padding:10px; margin-bottom:15px; background:#222; border:1px solid #444; color:white; border-radius:5px;">
+
+            <label style="color:var(--text-muted); font-size:0.9rem;">Sender Name</label>
+            <input type="text" id="verifySender" placeholder="Name on PhonePe" style="width:100%; padding:10px; margin-bottom:15px; background:#222; border:1px solid #444; color:white; border-radius:5px;">
+
+            <label style="color:var(--text-muted); font-size:0.9rem;">UTR / Transaction ID</label>
+            <input type="text" id="verifyUTR" placeholder="T230..." style="width:100%; padding:10px; margin-bottom:15px; background:#222; border:1px solid #444; color:white; border-radius:5px;">
+
+            <button id="btnSubmitVerify" class="btn-buy" onclick="submitPaymentVerification()">Submit for Verification</button>
+            <button class="close-btn" onclick="closeVerifyModal()" style="width:100%; margin-top:10px; background:transparent; border:1px solid #444;">Cancel</button>
         </div>
     </div>
 
@@ -321,7 +353,7 @@
         <div class="modal-content" style="text-align:left; max-width:500px;">
             <h2 style="text-align:center; margin-top:0;">New Order</h2>
             
-            <div style="background:rgba(255, 193, 7, 0.1); border:1px solid #ffc107; color:#ffc107; padding:10px; border-radius:8px; font-size:0.85rem; margin-bottom:20px;">
+            <div class="warning-box">
                 <i class="fas fa-exclamation-triangle"></i> <strong>Important:</strong><br>
                 • Account must be <strong>Public</strong>.<br>
                 • For Followers: Turn OFF "Flag for Review".
@@ -358,7 +390,6 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-        // Added: addDoc, collection, query, where, orderBy for Order Management
         import { getFirestore, doc, getDoc, setDoc, updateDoc, addDoc, collection, onSnapshot, query, where, orderBy } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -378,13 +409,13 @@
 
         let currentUser = null;
         let currentBalance = 0;
-        let selectedServicePricePer1k = 0; // Store price for calculation
+        let selectedServicePricePer1k = 0;
 
         const loginBtn = document.getElementById('loginBtn');
         const menuBtn = document.getElementById('menuBtn');
         const logoutBtn = document.getElementById('logoutBtn');
 
-        // AUTH & BALANCE LISTENER
+        // AUTH
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 currentUser = user;
@@ -401,9 +432,7 @@
                         currentBalance = docSnap.data().balance;
                         document.getElementById('userBalance').innerText = currentBalance;
                     } else {
-                        setDoc(userRef, {
-                            name: user.displayName, email: user.email, balance: 0
-                        });
+                        setDoc(userRef, { name: user.displayName, email: user.email, balance: 0 });
                     }
                 });
             } else {
@@ -411,7 +440,7 @@
                 loginBtn.style.display = 'block';
                 menuBtn.style.display = 'none';
                 currentBalance = 0;
-                showSection('services-container'); // Reset view on logout
+                showSection('services-container');
                 document.getElementById('sidebar').classList.remove('active');
                 document.getElementById('overlay').classList.remove('active');
             }
@@ -420,47 +449,37 @@
         loginBtn.addEventListener('click', () => signInWithPopup(auth, provider).catch(console.error));
         logoutBtn.addEventListener('click', () => signOut(auth).then(()=>alert("Logged out")));
 
-        // --- NAVIGATION LOGIC ---
+        // NAVIGATION
         window.toggleSidebar = () => {
             document.getElementById('sidebar').classList.toggle('active');
             document.getElementById('overlay').classList.toggle('active');
         }
 
         window.showSection = (sectionId) => {
-            // Hide all sections first
             document.getElementById('services-container').style.display = 'none';
             document.getElementById('my-orders-section').style.display = 'none';
             
-            // Show the target section
             const target = document.getElementById(sectionId);
-            if(sectionId === 'services-container') {
-                target.style.display = 'grid'; // Grid for services
-            } else {
-                target.style.display = 'block'; // Block for tables
-            }
-            toggleSidebar(); // Close menu
+            if(sectionId === 'services-container') target.style.display = 'grid';
+            else target.style.display = 'block';
+            
+            toggleSidebar();
         }
 
         // --- NEW ORDER LOGIC ---
-        
-        // 1. Open Modal and Setup Form
         window.openOrderForm = (serviceName, pricePer1k) => {
             if (!currentUser) return alert("Please Login first!");
-            
             selectedServicePricePer1k = pricePer1k;
             document.getElementById('orderServiceName').value = serviceName;
             document.getElementById('orderPrice').innerText = "₹0";
             document.getElementById('orderQty').value = "";
             document.getElementById('orderLink').value = "";
-            
             document.getElementById('orderModal').style.display = 'flex';
         }
 
-        // 2. Real-time Price Calculation
         window.calculatePrice = () => {
             const qty = document.getElementById('orderQty').value;
             if(qty > 0) {
-                // Formula: (PricePer1k * Quantity) / 1000
                 const total = (selectedServicePricePer1k * qty) / 1000;
                 document.getElementById('orderPrice').innerText = "₹" + total.toFixed(2);
             } else {
@@ -468,31 +487,26 @@
             }
         }
 
-        // 3. Submit Order to Database
         window.submitOrder = async () => {
             const qty = parseInt(document.getElementById('orderQty').value);
             const link = document.getElementById('orderLink').value;
             const serviceName = document.getElementById('orderServiceName').value;
             const totalCost = (selectedServicePricePer1k * qty) / 1000;
 
-            // Validations
             if (!link) return alert("Please enter the link!");
             if (!qty || qty < 10) return alert("Minimum quantity is 10.");
             if (currentBalance < totalCost) return alert(`Insufficient Balance! You need ₹${totalCost.toFixed(2)}.`);
 
             if(!confirm(`Confirm Order?\nService: ${serviceName}\nQty: ${qty}\nCost: ₹${totalCost.toFixed(2)}`)) return;
 
-            // Show Processing State
             const btn = document.getElementById('btnConfirmOrder');
             btn.innerText = "Processing...";
             btn.disabled = true;
             
             try {
-                // A. Deduct Money
                 const userRef = doc(db, "users", currentUser.uid);
                 await updateDoc(userRef, { balance: currentBalance - totalCost });
 
-                // B. Save Order Record
                 await addDoc(collection(db, "orders"), {
                     userId: currentUser.uid,
                     userName: currentUser.displayName,
@@ -500,13 +514,12 @@
                     link: link,
                     quantity: qty,
                     cost: totalCost,
-                    status: "Pending", // Default status
+                    status: "Pending",
                     timestamp: new Date()
                 });
 
                 alert("Order Placed Successfully! 🚀");
                 window.closeOrderModal();
-                
             } catch (error) {
                 console.error(error);
                 alert("Order Failed: " + error.message);
@@ -518,17 +531,17 @@
 
         window.closeOrderModal = () => document.getElementById('orderModal').style.display = 'none';
 
-        // --- ORDER HISTORY LOGIC ---
+        // --- REAL-TIME ORDER HISTORY ---
         window.loadOrderHistory = () => {
             if(!currentUser) return;
             const tbody = document.getElementById('orders-table-body');
             tbody.innerHTML = "<tr><td colspan='5' style='text-align:center; padding:20px;'>Loading...</td></tr>";
 
-            // Query: Get orders for THIS user, ordered by newest first
             const q = query(collection(db, "orders"), where("userId", "==", currentUser.uid), orderBy("timestamp", "desc"));
             
+            // Listen for changes
             onSnapshot(q, (snapshot) => {
-                tbody.innerHTML = ""; // Clear table
+                tbody.innerHTML = "";
                 if(snapshot.empty) {
                     tbody.innerHTML = "<tr><td colspan='5' style='text-align:center; padding:20px; color:#888;'>No orders found.</td></tr>";
                     return;
@@ -536,12 +549,10 @@
                 
                 snapshot.forEach(doc => {
                     const order = doc.data();
-                    
-                    // Status Colors
-                    let statusColor = '#ffc107'; // Pending (Yellow)
-                    if(order.status === 'Processing') statusColor = '#2196f3'; // Blue
-                    if(order.status === 'Completed') statusColor = '#00e676'; // Green
-                    if(order.status === 'Cancelled') statusColor = '#ff5252'; // Red
+                    let statusColor = '#ffc107'; // Pending
+                    if(order.status === 'Processing') statusColor = '#2196f3';
+                    if(order.status === 'Completed') statusColor = '#00e676';
+                    if(order.status === 'Cancelled') statusColor = '#ff5252';
 
                     const row = `
                         <tr style="border-bottom:1px solid #222;">
@@ -560,14 +571,56 @@
                     `;
                     tbody.innerHTML += row;
                 });
+            }, (error) => {
+                console.error("Error fetching orders:", error);
+                // IF YOU SEE THIS ALERT, CHECK THE CONSOLE FOR THE INDEX LINK
+                alert("Order list failed. Check console for 'Missing Index' link.");
             });
         }
 
-        // --- PAYMENT MODALS ---
+        // --- VERIFY PAYMENT LOGIC ---
         window.openPaymentModal = () => { document.getElementById('paymentModal').style.display = 'flex'; toggleSidebar(); }
         window.closeModal = () => { document.getElementById('paymentModal').style.display = 'none'; }
+        
+        window.openVerifyModal = () => { document.getElementById('verifyPaymentModal').style.display = 'flex'; toggleSidebar(); }
+        window.closeVerifyModal = () => { document.getElementById('verifyPaymentModal').style.display = 'none'; }
 
-        // --- RENDER SERVICES ---
+        window.submitPaymentVerification = async () => {
+            const amount = document.getElementById('verifyAmount').value;
+            const sender = document.getElementById('verifySender').value;
+            const utr = document.getElementById('verifyUTR').value;
+
+            if(!amount || !sender || !utr) return alert("Please fill all fields.");
+
+            const btn = document.getElementById('btnSubmitVerify');
+            btn.innerText = "Submitting...";
+            btn.disabled = true;
+
+            try {
+                // Save to NEW collection: 'payment_verifications'
+                await addDoc(collection(db, "payment_verifications"), {
+                    userId: currentUser.uid,
+                    userName: currentUser.displayName,
+                    userEmail: currentUser.email,
+                    amount: amount,
+                    senderName: sender,
+                    utr: utr,
+                    status: "Checking",
+                    timestamp: new Date()
+                });
+
+                alert("Verification Submitted! Status: Checking.");
+                window.closeVerifyModal();
+            } catch (e) {
+                console.error(e);
+                alert("Error submitting: " + e.message);
+            } finally {
+                btn.innerText = "Submit for Verification";
+                btn.disabled = false;
+            }
+        }
+
+        // --- SERVICES ---
         const services = [
             {
                 category: "Basic (Cheapest)",
