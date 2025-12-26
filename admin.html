@@ -44,13 +44,6 @@
         .btn-sm { padding: 4px 8px; font-size: 0.75rem; margin-top: 5px; background: #333; border: 1px solid #444; color: #ccc; cursor: pointer; }
         .btn-sm:hover { filter: brightness(1.2); color: white; }
         
-        /* PIN Input Styling */
-        .pin-input {
-            padding: 10px; font-size: 1.2rem; text-align: center; letter-spacing: 5px;
-            border-radius: 5px; border: 1px solid #333; background: #222; color: white;
-            width: 80%; margin-bottom: 15px;
-        }
-
         /* Tabs */
         .tabs { display: flex; justify-content: center; gap: 15px; margin-bottom: 30px; }
         .tab-btn { background: #222; border: 1px solid #444; color: #888; padding: 10px 25px; cursor: pointer; }
@@ -84,17 +77,15 @@
 
     <div id="login-screen" class="admin-login">
         <h2><i class="fas fa-user-shield"></i> Admin Access</h2>
-        <p>Enter 6-Digit PIN</p>
-        <input type="password" id="adminPinInput" class="pin-input" placeholder="******" maxlength="6">
-        <br>
-        <button class="btn" onclick="checkPin()">Access Panel</button>
+        <p>Restricted Area. Authorized Personnel Only.</p>
+        <button class="btn" id="adminLoginBtn">Login with Google</button>
     </div>
 
     <div id="dashboard" class="dashboard">
         
         <div class="header-bar">
             <h1>FameX Admin</h1>
-            <button class="btn" onclick="logoutAdmin()" style="background:#333;">
+            <button class="btn" id="adminLogoutBtn" style="background:#333;">
                 Logout <i class="fas fa-sign-out-alt"></i>
             </button>
         </div>
@@ -162,10 +153,11 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-        // Using standard Firestore functions
+        // IMPORTING AUTH TOOLS
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
         import { getFirestore, collection, getDocs, getDoc, doc, updateDoc, deleteDoc, onSnapshot, query, orderBy, increment } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
-        // CONFIG
+        // CONFIG (Same as your main site)
         const firebaseConfig = {
             apiKey: "AIzaSyAN_hd8rr46X25lOZ0cKwe6pAVl2sh61AI",
             authDomain: "famex-4cb1e.firebaseapp.com",
@@ -177,36 +169,56 @@
         };
 
         const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
         const db = getFirestore(app);
+        const provider = new GoogleAuthProvider();
 
-        // --- 🔐 SECURITY: PIN CODE ---
-        const ADMIN_PIN = "736157"; 
+        // ⚠️ CHECK THIS LINE: Replace with your actual admin email
+        const ADMIN_EMAIL = "yoursa.in.here@gmail.com"; 
 
+        const loginBtn = document.getElementById('adminLoginBtn');
+        const logoutBtn = document.getElementById('adminLogoutBtn');
         const loginScreen = document.getElementById('login-screen');
         const dashboard = document.getElementById('dashboard');
 
-        // --- 1. SESSION CHECK (Run on Load) ---
-        // Keeps you logged in on refresh!
-        if (localStorage.getItem("famex_admin_session") === "true") {
-            initAdminPanel();
-        }
-
-        // --- 2. PIN LOGIN LOGIC ---
-        window.checkPin = () => {
-            const input = document.getElementById("adminPinInput").value;
-            if (input === ADMIN_PIN) {
-                localStorage.setItem("famex_admin_session", "true");
-                initAdminPanel();
+        // --- 1. SESSION LISTENER (The Refresh Fix) ---
+        // This runs automatically when the page loads. 
+        // If it finds a user, it checks the email and logs you in instantly.
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                console.log("Found active user:", user.email);
+                if (user.email === ADMIN_EMAIL) {
+                    initAdminPanel();
+                } else {
+                    alert("ACCESS DENIED: Email mismatch.");
+                    signOut(auth);
+                }
             } else {
-                alert("Incorrect PIN!");
+                console.log("No active session. Please log in.");
+                // Ensure login screen is visible if not logged in
+                loginScreen.style.display = 'block';
+                dashboard.style.display = 'none';
             }
-        }
+        });
+
+        // --- 2. LOGIN LOGIC (Google) ---
+        loginBtn.addEventListener('click', async () => {
+            try {
+                const result = await signInWithPopup(auth, provider);
+                if (result.user.email === ADMIN_EMAIL) {
+                    initAdminPanel();
+                } else {
+                    alert("ACCESS DENIED: Email does not match admin.");
+                    await auth.signOut();
+                }
+            } catch (error) { alert("Login Error: " + error.message); }
+        });
 
         // --- 3. LOGOUT LOGIC ---
-        window.logoutAdmin = () => {
-            localStorage.removeItem("famex_admin_session");
+        logoutBtn.addEventListener('click', async () => {
+            await signOut(auth);
             window.location.reload();
-        }
+        });
 
         function initAdminPanel() {
             loginScreen.style.display = 'none';
@@ -228,7 +240,7 @@
             navigator.clipboard.writeText(text).then(() => alert("Copied to clipboard!"));
         }
 
-        // --- 1. USER MANAGEMENT ---
+        // --- 1. USER MANAGEMENT (With Ban/Unban) ---
         window.loadUsers = async () => {
             const tableBody = document.getElementById('user-table-body');
             try {
@@ -270,7 +282,10 @@
                     `;
                     tableBody.appendChild(row);
                 });
-            } catch (e) { console.error(e); }
+            } catch (e) { 
+                console.error(e); 
+                tableBody.innerHTML = '<tr><td colspan="4" style="color:red; text-align:center;">Error loading users.</td></tr>';
+            }
         }
 
         window.updateUserBalance = async (userId) => {
@@ -301,12 +316,11 @@
 
         // DELETE USER
         window.deleteUserDB = async (userId) => {
-            if(!confirm("⚠️ DANGER: This will delete the user's data permanently. Continue?")) return;
+            if(!confirm("⚠️ DANGER: This will delete the user's data from the database. They will lose their balance. Continue?")) return;
             await deleteDoc(doc(db, "users", userId));
             alert("User deleted from Database.");
             loadUsers();
         }
-
 
         // --- 2. ORDER MANAGEMENT ---
         window.loadOrders = () => {
