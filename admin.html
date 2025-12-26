@@ -44,13 +44,6 @@
         .btn-sm { padding: 4px 8px; font-size: 0.75rem; margin-top: 5px; background: #333; border: 1px solid #444; color: #ccc; }
         .btn-sm:hover { background: #555; color: white; }
         
-        /* PIN Input Styling */
-        .pin-input {
-            padding: 10px; font-size: 1.2rem; text-align: center; letter-spacing: 5px;
-            border-radius: 5px; border: 1px solid #333; background: #222; color: white;
-            width: 80%; margin-bottom: 15px;
-        }
-
         /* Tabs */
         .tabs { display: flex; justify-content: center; gap: 15px; margin-bottom: 30px; }
         .tab-btn { background: #222; border: 1px solid #444; color: #888; padding: 10px 25px; cursor: pointer; }
@@ -83,17 +76,15 @@
 
     <div id="login-screen" class="admin-login">
         <h2><i class="fas fa-user-shield"></i> Admin Access</h2>
-        <p>Enter 6-Digit PIN</p>
-        <input type="password" id="adminPinInput" class="pin-input" placeholder="******" maxlength="6">
-        <br>
-        <button class="btn" onclick="checkPin()">Access Panel</button>
+        <p>Restricted Area. Authorized Personnel Only.</p>
+        <button class="btn" id="adminLoginBtn">Login with Google</button>
     </div>
 
     <div id="dashboard" class="dashboard">
         
         <div class="header-bar">
             <h1>FameX Admin</h1>
-            <button class="btn" onclick="logoutAdmin()" style="background:#333;">
+            <button class="btn" id="adminLogoutBtn" style="background:#333;">
                 Logout <i class="fas fa-sign-out-alt"></i>
             </button>
         </div>
@@ -161,7 +152,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-        // REMOVED Firebase Auth imports (Google login not needed anymore)
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
         import { getFirestore, collection, getDocs, getDoc, doc, updateDoc, deleteDoc, onSnapshot, query, orderBy, increment } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
         // CONFIG (Same as your main site)
@@ -176,37 +167,55 @@
         };
 
         const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
         const db = getFirestore(app);
+        const provider = new GoogleAuthProvider();
 
-        // --- 🔐 SECURITY: PIN CODE ---
-        const ADMIN_PIN = "736157"; 
+        // ⚠️ CHECK THIS LINE: Does this match your email EXACTLY?
+        const ADMIN_EMAIL = "yoursa.in.here@gmail.com"; 
 
+        const loginBtn = document.getElementById('adminLoginBtn');
+        const logoutBtn = document.getElementById('adminLogoutBtn');
         const loginScreen = document.getElementById('login-screen');
         const dashboard = document.getElementById('dashboard');
 
-        // --- 1. SESSION CHECK (Run on Load) ---
-        // Checks if you logged in previously so you don't have to enter PIN again on refresh
-        if (localStorage.getItem("famex_admin_session") === "true") {
-            initAdminPanel();
-        }
-
-        // --- 2. PIN LOGIN LOGIC ---
-        window.checkPin = () => {
-            const input = document.getElementById("adminPinInput").value;
-            if (input === ADMIN_PIN) {
-                // Save session to browser storage
-                localStorage.setItem("famex_admin_session", "true");
-                initAdminPanel();
+        // --- SESSION LISTENER WITH DEBUGGING ---
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                // User is found in browser memory
+                console.log("Found active user:", user.email); 
+                
+                if (user.email === ADMIN_EMAIL) {
+                    console.log("Email matches ADMIN_EMAIL. Logging in...");
+                    initAdminPanel();
+                } else {
+                    console.warn("MISMATCH! Logged in as:", user.email, "but expected:", ADMIN_EMAIL);
+                    // Optional: You might want to sign them out if they are wrong
+                    // signOut(auth); 
+                }
             } else {
-                alert("Incorrect PIN!");
+                console.log("No active admin session found.");
             }
-        }
+        });
 
-        // --- 3. LOGOUT LOGIC ---
-        window.logoutAdmin = () => {
-            localStorage.removeItem("famex_admin_session");
+        // --- LOGIN LOGIC ---
+        loginBtn.addEventListener('click', async () => {
+            try {
+                const result = await signInWithPopup(auth, provider);
+                if (result.user.email === ADMIN_EMAIL) {
+                    initAdminPanel();
+                } else {
+                    alert(`ACCESS DENIED. You logged in as ${result.user.email}, but this panel allows only ${ADMIN_EMAIL}`);
+                    await auth.signOut();
+                }
+            } catch (error) { alert("Login Error: " + error.message); }
+        });
+
+        // ADMIN LOGOUT
+        logoutBtn.addEventListener('click', async () => {
+            await signOut(auth);
             window.location.reload();
-        }
+        });
 
         function initAdminPanel() {
             loginScreen.style.display = 'none';
@@ -277,13 +286,11 @@
             loadUsers();
         }
 
-        // FORCE LOGOUT
-        // This sets the flag to TRUE. The user side app will see this, log them out,
-        // and usually resets the flag. This means they CAN log in again afterwards.
+        // FORCE LOGOUT (Sets a flag)
         window.forceLogoutUser = async (userId) => {
-            if(!confirm("Force this user to log out? (They can log back in later)")) return;
+            if(!confirm("Force this user to log out?")) return;
             await updateDoc(doc(db, "users", userId), { forceLogout: true });
-            alert("Kick command sent. User will be logged out.");
+            alert("User will be logged out on next refresh.");
         }
 
         // --- 2. ORDER MANAGEMENT ---
