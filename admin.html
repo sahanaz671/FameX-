@@ -10,9 +10,9 @@
         :root {
             --bg-dark: #050505;
             --card-bg: #111;
-            --accent: #ff5252; /* Red for Admin Power */
+            --accent: #ff5252; /* Red for Ban/Delete */
             --text-main: #ffffff;
-            --success: #00e676;
+            --success: #00e676; /* Green for Unban/Success */
             --gold: #ffd700;
         }
         body {
@@ -41,9 +41,16 @@
             background: var(--accent); color: white; border: none;
             padding: 8px 15px; cursor: pointer; border-radius: 5px; font-weight: bold; font-size: 0.9rem;
         }
-        .btn-sm { padding: 4px 8px; font-size: 0.75rem; margin-top: 5px; background: #333; border: 1px solid #444; color: #ccc; }
-        .btn-sm:hover { background: #555; color: white; }
+        .btn-sm { padding: 4px 8px; font-size: 0.75rem; margin-top: 5px; background: #333; border: 1px solid #444; color: #ccc; cursor: pointer; }
+        .btn-sm:hover { filter: brightness(1.2); color: white; }
         
+        /* PIN Input Styling */
+        .pin-input {
+            padding: 10px; font-size: 1.2rem; text-align: center; letter-spacing: 5px;
+            border-radius: 5px; border: 1px solid #333; background: #222; color: white;
+            width: 80%; margin-bottom: 15px;
+        }
+
         /* Tabs */
         .tabs { display: flex; justify-content: center; gap: 15px; margin-bottom: 30px; }
         .tab-btn { background: #222; border: 1px solid #444; color: #888; padding: 10px 25px; cursor: pointer; }
@@ -69,6 +76,7 @@
         .badge-pending { color: var(--gold); border: 1px solid var(--gold); }
         .badge-success { color: var(--success); border: 1px solid var(--success); }
         .badge-error { color: var(--accent); border: 1px solid var(--accent); }
+        .banned-tag { color: var(--accent); font-weight: bold; border: 1px solid var(--accent); padding: 2px 5px; border-radius: 3px; font-size: 0.7rem; margin-left: 5px; }
 
     </style>
 </head>
@@ -76,15 +84,17 @@
 
     <div id="login-screen" class="admin-login">
         <h2><i class="fas fa-user-shield"></i> Admin Access</h2>
-        <p>Restricted Area. Authorized Personnel Only.</p>
-        <button class="btn" id="adminLoginBtn">Login with Google</button>
+        <p>Enter 6-Digit PIN</p>
+        <input type="password" id="adminPinInput" class="pin-input" placeholder="******" maxlength="6">
+        <br>
+        <button class="btn" onclick="checkPin()">Access Panel</button>
     </div>
 
     <div id="dashboard" class="dashboard">
         
         <div class="header-bar">
             <h1>FameX Admin</h1>
-            <button class="btn" id="adminLogoutBtn" style="background:#333;">
+            <button class="btn" onclick="logoutAdmin()" style="background:#333;">
                 Logout <i class="fas fa-sign-out-alt"></i>
             </button>
         </div>
@@ -152,10 +162,10 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+        // Using standard Firestore functions
         import { getFirestore, collection, getDocs, getDoc, doc, updateDoc, deleteDoc, onSnapshot, query, orderBy, increment } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
-        // CONFIG (Same as your main site)
+        // CONFIG
         const firebaseConfig = {
             apiKey: "AIzaSyAN_hd8rr46X25lOZ0cKwe6pAVl2sh61AI",
             authDomain: "famex-4cb1e.firebaseapp.com",
@@ -167,55 +177,36 @@
         };
 
         const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
         const db = getFirestore(app);
-        const provider = new GoogleAuthProvider();
 
-        // ⚠️ CHECK THIS LINE: Does this match your email EXACTLY?
-        const ADMIN_EMAIL = "yoursa.in.here@gmail.com"; 
+        // --- 🔐 SECURITY: PIN CODE ---
+        const ADMIN_PIN = "736157"; 
 
-        const loginBtn = document.getElementById('adminLoginBtn');
-        const logoutBtn = document.getElementById('adminLogoutBtn');
         const loginScreen = document.getElementById('login-screen');
         const dashboard = document.getElementById('dashboard');
 
-        // --- SESSION LISTENER WITH DEBUGGING ---
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                // User is found in browser memory
-                console.log("Found active user:", user.email); 
-                
-                if (user.email === ADMIN_EMAIL) {
-                    console.log("Email matches ADMIN_EMAIL. Logging in...");
-                    initAdminPanel();
-                } else {
-                    console.warn("MISMATCH! Logged in as:", user.email, "but expected:", ADMIN_EMAIL);
-                    // Optional: You might want to sign them out if they are wrong
-                    // signOut(auth); 
-                }
+        // --- 1. SESSION CHECK (Run on Load) ---
+        // Keeps you logged in on refresh!
+        if (localStorage.getItem("famex_admin_session") === "true") {
+            initAdminPanel();
+        }
+
+        // --- 2. PIN LOGIN LOGIC ---
+        window.checkPin = () => {
+            const input = document.getElementById("adminPinInput").value;
+            if (input === ADMIN_PIN) {
+                localStorage.setItem("famex_admin_session", "true");
+                initAdminPanel();
             } else {
-                console.log("No active admin session found.");
+                alert("Incorrect PIN!");
             }
-        });
+        }
 
-        // --- LOGIN LOGIC ---
-        loginBtn.addEventListener('click', async () => {
-            try {
-                const result = await signInWithPopup(auth, provider);
-                if (result.user.email === ADMIN_EMAIL) {
-                    initAdminPanel();
-                } else {
-                    alert(`ACCESS DENIED. You logged in as ${result.user.email}, but this panel allows only ${ADMIN_EMAIL}`);
-                    await auth.signOut();
-                }
-            } catch (error) { alert("Login Error: " + error.message); }
-        });
-
-        // ADMIN LOGOUT
-        logoutBtn.addEventListener('click', async () => {
-            await signOut(auth);
+        // --- 3. LOGOUT LOGIC ---
+        window.logoutAdmin = () => {
+            localStorage.removeItem("famex_admin_session");
             window.location.reload();
-        });
+        }
 
         function initAdminPanel() {
             loginScreen.style.display = 'none';
@@ -248,10 +239,22 @@
                     const user = docSnap.data();
                     const userId = docSnap.id;
                     
+                    // Check if banned
+                    const isBanned = user.forceLogout === true;
+
+                    // SMART BUTTON LOGIC:
+                    // If banned, show "Unban" (Green). If active, show "Ban" (Red).
+                    let actionBtn = '';
+                    if (isBanned) {
+                        actionBtn = `<button class="btn-sm" style="color:var(--success); border-color:var(--success);" onclick="unbanUser('${userId}')">Unban User</button>`;
+                    } else {
+                        actionBtn = `<button class="btn-sm" style="color:var(--accent); border-color:var(--accent);" onclick="banUser('${userId}')">Ban User</button>`;
+                    }
+
                     const row = document.createElement('tr');
                     row.innerHTML = `
                         <td>
-                            <strong>${user.name || "Unknown"}</strong><br>
+                            <strong>${user.name || "Unknown"}</strong> ${isBanned ? '<span class="banned-tag">BANNED</span>' : ''}<br>
                             <span style="font-size:0.8rem; color:#888;">${user.email}</span><br>
                             <span style="font-size:0.7rem; color:#555;">ID: ${userId}</span>
                         </td>
@@ -261,7 +264,7 @@
                             <button class="btn" style="background:var(--success); padding:8px;" onclick="updateUserBalance('${userId}')">Save</button>
                         </td>
                         <td>
-                            <button class="btn-sm" style="color:var(--accent); border-color:var(--accent);" onclick="forceLogoutUser('${userId}')">Force Logout</button><br>
+                            ${actionBtn}<br>
                             <button class="btn-sm" style="color:red; border-color:red; margin-top:5px;" onclick="deleteUserDB('${userId}')">Delete User</button>
                         </td>
                     `;
@@ -278,25 +281,36 @@
             loadUsers();
         }
 
+        // --- BAN / UNBAN LOGIC ---
+        
+        // 1. BAN (Sets forceLogout: true)
+        window.banUser = async (userId) => {
+            if(!confirm("BAN this user? They will be logged out and cannot return until unbanned.")) return;
+            await updateDoc(doc(db, "users", userId), { forceLogout: true });
+            alert("User has been BANNED.");
+            loadUsers(); // Refresh list to see change
+        }
+
+        // 2. UNBAN (Sets forceLogout: false)
+        window.unbanUser = async (userId) => {
+            if(!confirm("UNBAN this user? They will be able to log in again.")) return;
+            await updateDoc(doc(db, "users", userId), { forceLogout: false });
+            alert("User has been UNBANNED.");
+            loadUsers(); // Refresh list to see change
+        }
+
         // DELETE USER
         window.deleteUserDB = async (userId) => {
-            if(!confirm("⚠️ DANGER: This will delete the user's data from the database. They will lose their balance. Continue?")) return;
+            if(!confirm("⚠️ DANGER: This will delete the user's data permanently. Continue?")) return;
             await deleteDoc(doc(db, "users", userId));
             alert("User deleted from Database.");
             loadUsers();
         }
 
-        // FORCE LOGOUT (Sets a flag)
-        window.forceLogoutUser = async (userId) => {
-            if(!confirm("Force this user to log out?")) return;
-            await updateDoc(doc(db, "users", userId), { forceLogout: true });
-            alert("User will be logged out on next refresh.");
-        }
 
         // --- 2. ORDER MANAGEMENT ---
         window.loadOrders = () => {
             const tableBody = document.getElementById('orders-table-body');
-            // If Index is missing, remove orderBy
             const q = query(collection(db, "orders"), orderBy("timestamp", "desc"));
 
             onSnapshot(q, (snapshot) => {
@@ -362,7 +376,6 @@
                     const data = docSnap.data();
                     const docId = docSnap.id;
                     
-                    // Fetch Current User Balance for Context
                     let currentBal = "Loading...";
                     try {
                         const userSnap = await getDoc(doc(db, "users", data.userId));
@@ -370,7 +383,6 @@
                         else currentBal = "User Not Found";
                     } catch(e) { currentBal = "Error"; }
 
-                    // Styling
                     let badgeClass = 'badge-pending';
                     if(data.status === 'Success') badgeClass = 'badge-success';
                     if(data.status === 'Rejected') badgeClass = 'badge-error';
@@ -401,18 +413,12 @@
             });
         }
 
-        // --- APPROVE PAYMENT (Transactional) ---
         window.approvePayment = async (docId, userId, amount) => {
             if(!confirm(`Confirm: Add ₹${amount} to user wallet?`)) return;
-            
             try {
-                // 1. Update Verification Status
                 await updateDoc(doc(db, "payment_verifications", docId), { status: "Success" });
-                
-                // 2. Add Money to User
                 const userRef = doc(db, "users", userId);
                 await updateDoc(userRef, { balance: increment(parseInt(amount)) });
-
                 alert("Success! Money added to user.");
             } catch(e) {
                 console.error(e);
