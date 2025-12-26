@@ -152,7 +152,6 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-        // CHANGE 1: Added onAuthStateChanged here
         import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
         import { getFirestore, collection, getDocs, getDoc, doc, updateDoc, deleteDoc, onSnapshot, query, orderBy, increment } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
@@ -172,7 +171,7 @@
         const db = getFirestore(app);
         const provider = new GoogleAuthProvider();
 
-        // --- 🔒 SECURITY: YOUR EMAIL ---
+        // ⚠️ CHECK THIS LINE: Does this match your email EXACTLY?
         const ADMIN_EMAIL = "yoursa.in.here@gmail.com"; 
 
         const loginBtn = document.getElementById('adminLoginBtn');
@@ -180,24 +179,33 @@
         const loginScreen = document.getElementById('login-screen');
         const dashboard = document.getElementById('dashboard');
 
-        // --- CHANGE 2: SESSION LISTENER (Keeps you logged in) ---
+        // --- SESSION LISTENER WITH DEBUGGING ---
         onAuthStateChanged(auth, (user) => {
-            if (user && user.email === ADMIN_EMAIL) {
-                // User is signed in and is the correct admin
-                initAdminPanel();
+            if (user) {
+                // User is found in browser memory
+                console.log("Found active user:", user.email); 
+                
+                if (user.email === ADMIN_EMAIL) {
+                    console.log("Email matches ADMIN_EMAIL. Logging in...");
+                    initAdminPanel();
+                } else {
+                    console.warn("MISMATCH! Logged in as:", user.email, "but expected:", ADMIN_EMAIL);
+                    // Optional: You might want to sign them out if they are wrong
+                    // signOut(auth); 
+                }
             } else {
                 console.log("No active admin session found.");
             }
         });
 
-        // --- LOGIN LOGIC (Manual click) ---
+        // --- LOGIN LOGIC ---
         loginBtn.addEventListener('click', async () => {
             try {
                 const result = await signInWithPopup(auth, provider);
                 if (result.user.email === ADMIN_EMAIL) {
                     initAdminPanel();
                 } else {
-                    alert("ACCESS DENIED.");
+                    alert(`ACCESS DENIED. You logged in as ${result.user.email}, but this panel allows only ${ADMIN_EMAIL}`);
                     await auth.signOut();
                 }
             } catch (error) { alert("Login Error: " + error.message); }
