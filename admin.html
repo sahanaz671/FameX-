@@ -173,7 +173,7 @@
         const db = getFirestore(app);
         const provider = new GoogleAuthProvider();
 
-        // ⚠️ CHECK THIS LINE: Replace with your actual admin email
+        // ⚠️ UPDATED: This now matches the email you provided
         const ADMIN_EMAIL = "yoursa.in.here@gmail.com"; 
 
         const loginBtn = document.getElementById('adminLoginBtn');
@@ -181,13 +181,13 @@
         const loginScreen = document.getElementById('login-screen');
         const dashboard = document.getElementById('dashboard');
 
-        // --- 1. SESSION LISTENER (The Refresh Fix) ---
-        // This runs automatically when the page loads. 
-        // If it finds a user, it checks the email and logs you in instantly.
+        // --- 1. SESSION LISTENER (Fixed Case Sensitivity) ---
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 console.log("Found active user:", user.email);
-                if (user.email === ADMIN_EMAIL) {
+                
+                // FIX: Convert both to Lowercase before comparing
+                if (user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
                     initAdminPanel();
                 } else {
                     alert("ACCESS DENIED: Email mismatch.");
@@ -195,17 +195,17 @@
                 }
             } else {
                 console.log("No active session. Please log in.");
-                // Ensure login screen is visible if not logged in
                 loginScreen.style.display = 'block';
                 dashboard.style.display = 'none';
             }
         });
 
-        // --- 2. LOGIN LOGIC (Google) ---
+        // --- 2. LOGIN LOGIC (Fixed Case Sensitivity) ---
         loginBtn.addEventListener('click', async () => {
             try {
                 const result = await signInWithPopup(auth, provider);
-                if (result.user.email === ADMIN_EMAIL) {
+                // FIX: Convert both to Lowercase before comparing
+                if (result.user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
                     initAdminPanel();
                 } else {
                     alert("ACCESS DENIED: Email does not match admin.");
