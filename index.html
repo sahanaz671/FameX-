@@ -40,7 +40,7 @@
         ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 
-        /* --- TOAST NOTIFICATIONS (Replaces Alerts) --- */
+        /* --- TOAST NOTIFICATIONS --- */
         #toast-container {
             position: fixed;
             top: 20px;
@@ -153,7 +153,6 @@
         }
         .user-name { font-size: 1.3rem; font-weight: bold; color: white; }
         
-        /* NEW: Stats Badges */
         .stats-row {
             display: flex;
             justify-content: center;
@@ -686,6 +685,10 @@
             measurementId: "G-S1T0L618XL"
         };
 
+        // 🤖 YOUR TELEGRAM KEYS (I inserted them for you)
+        const TG_BOT_TOKEN = "8488078367:AAHVvnc2gKKvDS52nubByEQO8bTgmhgifsU"; 
+        const TG_CHAT_ID = "6153166331"; 
+
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
@@ -695,12 +698,11 @@
         let currentBalance = 0;
         let selectedServicePricePer1k = 0;
 
-        // UI ELEMENTS
         const loginBtn = document.getElementById('loginBtn');
         const menuBtn = document.getElementById('menuBtn');
         const logoutBtn = document.getElementById('logoutBtn');
 
-        // --- TOAST SYSTEM (CUSTOM ALERTS) ---
+        // TOAST ALERT
         window.showToast = (message, type = 'success') => {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
@@ -714,7 +716,27 @@
             }, 3000);
         }
 
-        // --- AUTH & DATA LISTENER ---
+        // TELEGRAM SENDER
+        const sendTelegramAlert = async (text) => {
+            const url = `https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`;
+            const body = {
+                chat_id: TG_CHAT_ID,
+                text: text,
+                parse_mode: 'HTML'
+            };
+            try {
+                await fetch(url, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(body)
+                });
+                console.log("Telegram Alert Sent");
+            } catch (error) {
+                console.error("Telegram Error:", error);
+            }
+        }
+
+        // AUTH LISTENER
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 currentUser = user;
@@ -770,7 +792,6 @@
         loginBtn.addEventListener('click', () => signInWithPopup(auth, provider).catch(console.error));
         logoutBtn.addEventListener('click', () => signOut(auth).then(() => showToast("Logged out successfully")));
 
-        // --- NAVIGATION & UI ---
         window.toggleSidebar = () => {
             document.getElementById('sidebar').classList.toggle('active');
             document.getElementById('overlay').classList.toggle('active');
@@ -788,7 +809,7 @@
             toggleSidebar();
         }
 
-        // --- ORDER LOGIC (UPDATED WITH STATS) ---
+        // --- ORDER LOGIC ---
         window.openOrderForm = (serviceName, pricePer1k) => {
             if (!currentUser) return showToast("Please Login first!", "error");
             selectedServicePricePer1k = pricePer1k;
@@ -827,15 +848,12 @@
 
             try {
                 const userRef = doc(db, "users", currentUser.uid);
-                
-                // Deduct Balance & Update Stats
                 await updateDoc(userRef, { 
                     balance: currentBalance - totalCost,
                     totalOrders: increment(1),
                     totalSpent: increment(totalCost)
                 });
 
-                // Save Order
                 await addDoc(collection(db, "orders"), {
                     userId: currentUser.uid,
                     userName: currentUser.displayName,
@@ -845,8 +863,12 @@
                     quantity: qty,
                     cost: totalCost,
                     status: "Pending",
-                    timestamp: serverTimestamp() // Server Time
+                    timestamp: serverTimestamp()
                 });
+
+                // TELEGRAM ALERT
+                const msg = `<b>📦 NEW ORDER!</b>\n\n<b>User:</b> ${currentUser.displayName}\n<b>Service:</b> ${serviceName}\n<b>Qty:</b> ${qty}\n<b>Cost:</b> ₹${totalCost}\n<b>Link:</b> ${link}`;
+                sendTelegramAlert(msg);
 
                 showToast("Order Placed Successfully! 🚀", "success");
                 window.closeOrderModal();
@@ -861,7 +883,7 @@
 
         window.closeOrderModal = () => document.getElementById('orderModal').style.display = 'none';
 
-        // --- ORDER HISTORY (WITH DATE/TIME) ---
+        // --- ORDER HISTORY ---
         window.loadOrderHistory = () => {
             if(!currentUser) return;
             const tbody = document.getElementById('orders-table-body');
@@ -882,7 +904,6 @@
                     if(order.status === 'Completed') statusClass = '#00e676';
                     if(order.status === 'Cancelled') statusClass = '#ff5252';
 
-                    // Format Date
                     const dateObj = order.timestamp ? order.timestamp.toDate() : new Date();
                     const dateStr = dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
@@ -904,7 +925,7 @@
             });
         }
 
-        // --- PAYMENT LOGIC (ANTI-SPAM) ---
+        // --- PAYMENT LOGIC ---
         window.openPaymentModal = () => { document.getElementById('paymentModal').style.display = 'flex'; toggleSidebar(); }
         window.closeModal = () => { document.getElementById('paymentModal').style.display = 'none'; }
         window.openVerifyModal = () => { document.getElementById('verifyPaymentModal').style.display = 'flex'; toggleSidebar(); }
@@ -922,7 +943,6 @@
             btn.disabled = true;
 
             try {
-                // ANTI-SPAM: Check if user already has a pending request
                 const q = query(
                     collection(db, "payment_verifications"), 
                     where("userId", "==", currentUser.uid),
@@ -944,6 +964,10 @@
                     status: "Checking",
                     timestamp: serverTimestamp()
                 });
+
+                // TELEGRAM ALERT
+                const msg = `<b>💰 NEW PAYMENT!</b>\n\n<b>User:</b> ${currentUser.displayName}\n<b>Amount:</b> ₹${amount}\n<b>UTR:</b> ${utr}\n<b>Sender:</b> ${sender}`;
+                sendTelegramAlert(msg);
 
                 showToast("Verification Submitted! Admin will approve shortly.", "success");
                 window.closeVerifyModal();
@@ -972,7 +996,7 @@
                 snapshot.forEach(doc => {
                     const payment = doc.data();
                     let statusClass = '#ffc107'; 
-                    if(payment.status === 'Approved') statusClass = '#00e676';
+                    if(payment.status === 'Approved' || payment.status === 'Success') statusClass = '#00e676';
                     if(payment.status === 'Rejected') statusClass = '#ff5252';
 
                     const dateObj = payment.timestamp ? payment.timestamp.toDate() : new Date();
@@ -1044,7 +1068,7 @@
             }
         }
 
-        // --- ALL SERVICES (RESTORING FULL LIST) ---
+        // --- ALL SERVICES ---
         const services = [
             { 
                 category: "Basic (Cheapest)", 
