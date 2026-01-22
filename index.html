@@ -600,6 +600,9 @@
             
             <label class="modal-label">UTR / Transaction ID</label>
             <input type="text" id="verifyUTR" class="modal-input" placeholder="T23078...">
+
+            <label class="modal-label" style="color:var(--gold);">Referral Code (Optional)</label>
+            <input type="text" id="payRefCode" class="modal-input" placeholder="Enter Code for Bonus!" style="border-color:var(--gold);">
             
             <button id="btnSubmitVerify" class="btn-buy" onclick="submitPaymentVerification()">Submit for Verification</button>
             <button class="close-btn" onclick="closeVerifyModal()">Cancel</button>
@@ -815,7 +818,7 @@
             toggleSidebar();
         }
 
-        // --- ORDER LOGIC ---
+        // --- ORDER LOGIC (UPDATED: SMART CALC) ---
         window.openOrderForm = (serviceName, pricePer1k) => {
             if (!currentUser) return showToast("Please Login first!", "error");
             selectedServicePricePer1k = pricePer1k;
@@ -829,8 +832,10 @@
         window.calculatePrice = () => {
             const qty = document.getElementById('orderQty').value;
             if(qty > 0) {
-                const total = (selectedServicePricePer1k * qty) / 1000;
-                document.getElementById('orderPrice').innerText = "₹" + total.toFixed(2);
+                let total = (selectedServicePricePer1k * qty) / 1000;
+                // SMART CALC: Round up to nearest whole number (e.g. 10.1 -> 11)
+                total = Math.ceil(total); 
+                document.getElementById('orderPrice').innerText = "₹" + total;
             } else {
                 document.getElementById('orderPrice').innerText = "₹0";
             }
@@ -840,13 +845,16 @@
             const qty = parseInt(document.getElementById('orderQty').value);
             const link = document.getElementById('orderLink').value;
             const serviceName = document.getElementById('orderServiceName').value;
-            const totalCost = (selectedServicePricePer1k * qty) / 1000;
+            
+            let totalCost = (selectedServicePricePer1k * qty) / 1000;
+            // SMART CALC: Ensure deduction is integer
+            totalCost = Math.ceil(totalCost);
 
             if (!link) return showToast("Please enter the link!", "error");
             if (!qty || qty < 10) return showToast("Minimum quantity is 10.", "error");
-            if (currentBalance < totalCost) return showToast(`Insufficient Balance! You need ₹${totalCost.toFixed(2)}`, "error");
+            if (currentBalance < totalCost) return showToast(`Insufficient Balance! You need ₹${totalCost}`, "error");
 
-            if(!confirm(`Confirm Order?\nService: ${serviceName}\nCost: ₹${totalCost.toFixed(2)}`)) return;
+            if(!confirm(`Confirm Order?\nService: ${serviceName}\nCost: ₹${totalCost}`)) return;
 
             const btn = document.getElementById('btnConfirmOrder');
             btn.innerText = "Processing...";
@@ -918,7 +926,7 @@
                             <td style="color:#888; font-size:0.85rem;">${dateStr}</td>
                             <td>${order.service}<br><span style="font-size:0.8rem; color:#666;">Qty: ${order.quantity}</span></td>
                             <td><a href="${order.link}" target="_blank" style="color:var(--accent); text-decoration:none;">Link 🔗</a></td>
-                            <td style="text-align:center; color:white;">₹${order.cost.toFixed(2)}</td>
+                            <td style="text-align:center; color:white;">₹${Math.ceil(order.cost)}</td>
                             <td style="text-align:center;">
                                 <span class="status-badge" style="color:${statusClass}; border-color:${statusClass};">
                                     ${order.status}
@@ -937,10 +945,12 @@
         window.openVerifyModal = () => { document.getElementById('verifyPaymentModal').style.display = 'flex'; toggleSidebar(); }
         window.closeVerifyModal = () => { document.getElementById('verifyPaymentModal').style.display = 'none'; }
 
+        // --- SUBMIT PAYMENT WITH REFERRAL ---
         window.submitPaymentVerification = async () => {
             const amount = document.getElementById('verifyAmount').value;
             const sender = document.getElementById('verifySender').value;
             const utr = document.getElementById('verifyUTR').value;
+            const refCode = document.getElementById('payRefCode').value.trim(); // GET REFERRAL CODE
 
             if(!amount || !sender || !utr) return showToast("Please fill all fields.", "error");
 
@@ -960,6 +970,7 @@
                     throw new Error("You already have a pending request! Please wait.");
                 }
 
+                // Add to DB with Referral Code
                 await addDoc(collection(db, "payment_verifications"), {
                     userId: currentUser.uid,
                     userName: currentUser.displayName,
@@ -967,12 +978,13 @@
                     amount: parseFloat(amount),
                     senderName: sender,
                     utr: utr,
+                    referralCode: refCode || "None", // Save code for Admin
                     status: "Checking",
                     timestamp: serverTimestamp()
                 });
 
-                // TELEGRAM ALERT
-                const msg = `<b>💰 NEW PAYMENT!</b>\n\n<b>User:</b> ${currentUser.displayName}\n<b>Amount:</b> ₹${amount}\n<b>UTR:</b> ${utr}\n<b>Sender:</b> ${sender}`;
+                // TELEGRAM ALERT (INCLUDES REFERRAL CODE)
+                const msg = `<b>💰 NEW PAYMENT!</b>\n\n<b>User:</b> ${currentUser.displayName}\n<b>Amount:</b> ₹${amount}\n<b>UTR:</b> ${utr}\n<b>Sender:</b> ${sender}\n<b>Ref Code:</b> ${refCode ? refCode : 'None'}`;
                 sendTelegramAlert(msg);
 
                 showToast("Verification Submitted! Admin will approve shortly.", "success");
