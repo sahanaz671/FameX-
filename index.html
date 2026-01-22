@@ -663,7 +663,7 @@
     <footer id="footer-support">
         <div class="social-links">
             <a href="https://t.me/therealghost_here" target="_blank" class="social-btn"><i class="fab fa-telegram-plane"></i></a>
-            <a href="https://www.instagram.com/lil.shiinee" target="_blank" class="social-btn"><i class="fab fa-instagram"></i></a>
+            <a href="https://www.instagram.com/lil.shiinee?igsh=MWpzMzdwazYxZ2hwNQ==" target="_blank" class="social-btn"><i class="fab fa-instagram"></i></a>
         </div>
         <p style="color: var(--text-muted);">&copy; 2026 FameX. All rights reserved.</p>
     </footer>
@@ -1044,20 +1044,42 @@
             }
         }
 
-        // --- SERVICE DATA ---
+        // --- ALL SERVICES (RESTORING FULL LIST) ---
         const services = [
-            { category: "🔥 Hot & Best Selling", items: [
-                { name: "Instagram Followers [Non-Drop]", price: 249, label: "₹249 / 1k", desc: "365 Days Refill • Instant Start" },
-                { name: "Instagram Likes [Real]", price: 29, label: "₹29 / 1k", desc: "Reach Enabled • Fast" }
-            ]},
-            { category: "💎 Premium Services", items: [
-                { name: "Blue Tick Followers", price: 599, label: "₹599 / 1k", desc: "Verified Profiles • High Quality" },
-                { name: "Indian Real Followers", price: 349, label: "₹349 / 1k", desc: "100% Indian • Active Users" }
-            ]},
-            { category: "🚀 Cheapest Services", items: [
-                { name: "Bot Followers", price: 99, label: "₹99 / 1k", desc: "No Guarantee • For Count Only" },
-                { name: "Bot Views", price: 2, label: "₹2 / 1k", desc: "Instant • Works on Reels" }
-            ]}
+            { 
+                category: "Basic (Cheapest)", 
+                items: [
+                    { name: "Followers", price: 99, label: "₹99 / 1k", desc: "Basic quality" },
+                    { name: "Instagram Likes", price: 29, label: "₹29 / 1k", desc: "Fast delivery" },
+                    { name: "Views", price: 1, label: "₹1 / 1k", desc: "High speed" },
+                    { name: "Share", price: 3, label: "₹3 / 1k", desc: "Boost reach" }
+                ] 
+            },
+            { 
+                category: "High Quality (Non-Drop)", 
+                items: [
+                    { name: "Followers HQ", price: 249, label: "₹249 / 1k", desc: "Stable non-drop" },
+                    { name: "Likes HQ", price: 49, label: "₹49 / 1k", desc: "Real profiles" },
+                    { name: "Views HQ", price: 5, label: "₹5 / 1k", desc: "Premium reach" },
+                    { name: "Shares HQ", price: 15, label: "₹15 / 1k", desc: "Viral boost" }
+                ] 
+            },
+            { 
+                category: "Premium (Verified + Real)", 
+                items: [
+                    { name: "Followers Premium", price: 599, label: "₹599 / 1k", desc: "Verified + Rich accounts" },
+                    { name: "Likes Premium", price: 99, label: "₹99 / 1k", desc: "Genuine interaction" },
+                    { name: "Views Premium", price: 19, label: "₹19 / 1k", desc: "High retention" },
+                    { name: "Shares Premium", price: 49, label: "₹49 / 1k", desc: "Executive tier" }
+                ] 
+            },
+            { 
+                category: "Comments", 
+                items: [
+                    { name: "Normal Comments", price: 499, label: "₹499 / 1k", desc: "Random positive text" },
+                    { name: "Custom Text", price: 1499, label: "₹1499 / 1k", desc: "You provide the text" }
+                ] 
+            }
         ];
 
         const container = document.getElementById('services-container');
