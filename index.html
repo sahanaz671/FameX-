@@ -3,25 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FameX | Premium SMM</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <title>FameX | Ultra Premium SMM</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* --- PREMIUM DARK THEME --- */
+        /* --- ULTRA PREMIUM THEME --- */
         :root {
             --bg-dark: #050505;
-            --card-bg: rgba(20, 20, 20, 0.7);
-            --accent: #7c4dff; 
-            --accent-glow: rgba(124, 77, 255, 0.5);
+            --glass: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --accent: #7c4dff;
+            --accent-glow: rgba(124, 77, 255, 0.6);
             --gold: #ffd700;
+            --gold-glow: rgba(255, 215, 0, 0.4);
             --text-main: #ffffff;
             --text-muted: #a0a0a0;
+            --success: #00e676;
             --danger: #ff5252;
         }
 
         body {
-            font-family: 'Segoe UI', sans-serif;
+            font-family: 'Segoe UI', Roboto, Helvetica, sans-serif;
             background-color: var(--bg-dark);
-            background-image: radial-gradient(circle at 50% 0%, #1a0b2e 0%, #050505 60%);
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(124, 77, 255, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(255, 215, 0, 0.05) 0%, transparent 40%);
             color: var(--text-main);
             margin: 0;
             padding: 0;
@@ -29,24 +34,67 @@
             scroll-behavior: smooth;
         }
 
-        /* Navbar */
+        /* --- CUSTOM SCROLLBAR --- */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0a0a0a; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+        /* --- TOAST NOTIFICATIONS (Replaces Alerts) --- */
+        #toast-container {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .toast {
+            min-width: 300px;
+            padding: 15px 20px;
+            background: rgba(20, 20, 20, 0.95);
+            backdrop-filter: blur(10px);
+            border-left: 4px solid var(--accent);
+            border-radius: 8px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            animation: slideIn 0.3s ease-out forwards;
+            font-size: 0.95rem;
+        }
+        .toast.success { border-color: var(--success); }
+        .toast.error { border-color: var(--danger); }
+        @keyframes slideIn { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+
+        /* --- NAVBAR --- */
         header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 20px 5%;
-            background: rgba(5, 5, 5, 0.8);
-            backdrop-filter: blur(15px);
+            padding: 15px 5%;
+            background: rgba(5, 5, 5, 0.6);
+            backdrop-filter: blur(20px);
             position: sticky;
             top: 0;
             z-index: 100;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            border-bottom: 1px solid var(--glass-border);
         }
 
-        .logo { font-size: 1.8rem; font-weight: 800; letter-spacing: 2px; text-shadow: 0 0 15px var(--accent-glow); }
-        .logo span { color: var(--accent); }
-
-        .nav-actions { display: flex; gap: 15px; align-items: center; }
+        .logo {
+            font-size: 1.8rem;
+            font-weight: 800;
+            letter-spacing: 2px;
+            color: white;
+            text-transform: uppercase;
+        }
+        .logo span {
+            color: var(--accent);
+            text-shadow: 0 0 15px var(--accent-glow);
+        }
 
         .btn-menu {
             background: transparent;
@@ -55,266 +103,434 @@
             font-size: 1.5rem;
             cursor: pointer;
             display: none; /* Hidden until login */
+            transition: 0.3s;
         }
+        .btn-menu:hover { color: var(--accent); transform: scale(1.1); }
 
         .btn-login {
             background: rgba(124, 77, 255, 0.1);
             border: 1px solid var(--accent);
             color: var(--accent);
-            padding: 8px 25px;
+            padding: 8px 30px;
             border-radius: 50px;
             cursor: pointer;
             transition: 0.4s;
             font-weight: 600;
+            letter-spacing: 0.5px;
         }
-        .btn-login:hover { background: var(--accent); color: white; box-shadow: 0 0 20px var(--accent-glow); }
+        .btn-login:hover {
+            background: var(--accent);
+            color: white;
+            box-shadow: 0 0 25px var(--accent-glow);
+        }
 
-        /* Sidebar & Menu */
+        /* --- SIDEBAR --- */
         .sidebar {
             position: fixed;
-            top: 0; right: -320px;
-            width: 280px;
+            top: 0;
+            right: -350px;
+            width: 300px;
             height: 100%;
-            background: #0f0f0f;
-            border-left: 1px solid #333;
+            background: #0a0a0a;
+            border-left: 1px solid var(--glass-border);
             padding: 30px;
-            transition: 0.4s;
+            transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             z-index: 200;
-            box-shadow: -10px 0 30px rgba(0,0,0,0.8);
+            box-shadow: -20px 0 50px rgba(0,0,0,0.8);
             overflow-y: auto;
         }
         .sidebar.active { right: 0; }
 
         .profile-header { text-align: center; margin-bottom: 30px; }
-        .user-pic { width: 80px; height: 80px; border-radius: 50%; border: 2px solid var(--accent); margin-bottom: 10px; }
-        .user-name { font-size: 1.2rem; font-weight: bold; }
+        .user-pic {
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            border: 3px solid var(--accent);
+            padding: 3px;
+            margin-bottom: 15px;
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+        .user-name { font-size: 1.3rem; font-weight: bold; color: white; }
         
+        /* NEW: Stats Badges */
+        .stats-row {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .stat-badge {
+            background: rgba(255,255,255,0.05);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            border: 1px solid var(--glass-border);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
         .balance-card {
-            background: linear-gradient(45deg, #1a1a1a, #2a2a2a);
-            padding: 20px;
-            border-radius: 15px;
+            background: linear-gradient(135deg, #1a1a1a, #0d0d0d);
+            padding: 25px;
+            border-radius: 20px;
             text-align: center;
             border: 1px solid var(--gold);
-            margin-bottom: 25px;
-            box-shadow: 0 0 15px rgba(255, 215, 0, 0.1);
+            margin-bottom: 30px;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.1);
+            position: relative;
+            overflow: hidden;
         }
-        .balance-label { font-size: 0.9rem; color: var(--text-muted); }
-        .balance-amount { font-size: 2rem; color: var(--gold); font-weight: bold; margin: 5px 0; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
+        .balance-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,215,0,0.1) 0%, transparent 60%);
+            animation: rotate 10s linear infinite;
+        }
+        @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-        /* Menu Links */
+        .balance-amount {
+            font-size: 2.2rem;
+            color: var(--gold);
+            font-weight: 800;
+            margin: 5px 0;
+            text-shadow: 0 0 15px var(--gold-glow);
+            position: relative;
+        }
+
         .menu-list { list-style: none; padding: 0; margin: 0; }
         .menu-item {
-            display: flex; align-items: center; gap: 15px;
-            padding: 15px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 16px;
             color: var(--text-muted);
-            text-decoration: none;
-            border-radius: 10px;
+            border-radius: 12px;
             transition: 0.3s;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             cursor: pointer;
             font-size: 1rem;
+            border: 1px solid transparent;
         }
-        .menu-item:hover { background: rgba(255,255,255,0.05); color: white; transform: translateX(5px); }
-        .menu-item i { width: 20px; text-align: center; color: var(--accent); }
-        
+        .menu-item:hover {
+            background: var(--glass);
+            border-color: var(--glass-border);
+            color: white;
+            transform: translateX(5px);
+        }
+        .menu-item i { width: 25px; text-align: center; color: var(--accent); transition: 0.3s; }
+        .menu-item:hover i { text-shadow: 0 0 10px var(--accent); }
+
         .btn-logout {
-            margin-top: 20px;
+            margin-top: 30px;
             width: 100%;
-            padding: 12px;
-            background: rgba(255, 82, 82, 0.1);
+            padding: 14px;
+            background: rgba(255, 82, 82, 0.05);
             color: var(--danger);
             border: 1px solid var(--danger);
-            border-radius: 10px;
+            border-radius: 12px;
             cursor: pointer;
             transition: 0.3s;
-            display: flex; align-items: center; justify-content: center; gap: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            font-weight: 600;
         }
-        .btn-logout:hover { background: var(--danger); color: white; }
+        .btn-logout:hover { background: var(--danger); color: white; box-shadow: 0 0 15px rgba(255, 82, 82, 0.4); }
 
         .overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5);
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
             z-index: 150;
             display: none;
-            backdrop-filter: blur(3px);
+            backdrop-filter: blur(5px);
         }
         .overlay.active { display: block; }
 
-        /* Hero */
-        .hero { text-align: center; padding: 80px 20px 100px 20px; }
+        /* --- HERO SECTION --- */
+        .hero { text-align: center; padding: 100px 20px 120px 20px; }
         .hero h1 {
-            font-size: 3.5rem;
-            margin-bottom: 15px;
-            background: linear-gradient(to right, #fff, #b3b3b3);
+            font-size: 4rem;
+            margin-bottom: 20px;
+            background: linear-gradient(to right, #ffffff, #b3b3b3);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 20px rgba(255,255,255,0.2));
         }
-        .hero p { color: var(--text-muted); font-size: 1.2rem; }
+        .hero p { color: var(--text-muted); font-size: 1.3rem; max-width: 600px; margin: 0 auto; }
 
-        /* --- NEW: PROMO BADGE STYLE --- */
         .promo-badge {
             display: inline-block;
             background: rgba(255, 215, 0, 0.1);
             border: 1px solid var(--gold);
             color: var(--gold);
-            padding: 8px 20px;
+            padding: 10px 25px;
             border-radius: 50px;
             font-weight: bold;
             font-size: 0.9rem;
-            margin-bottom: 20px;
-            box-shadow: 0 0 15px rgba(255, 215, 0, 0.2);
+            margin-bottom: 25px;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
             animation: pulse 2s infinite;
         }
         @keyframes pulse {
             0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.4); }
-            70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(255, 215, 0, 0); }
+            70% { transform: scale(1.05); box-shadow: 0 0 0 15px rgba(255, 215, 0, 0); }
             100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); }
         }
 
-        /* Grid */
+        /* --- CONTENT GRID & CARDS --- */
         .container { max-width: 1200px; margin: 0 auto; padding: 40px 20px; }
-        .section { display: none; animation: fadeIn 0.5s; } /* Hide sections by default */
-        
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .section { display: none; animation: fadeIn 0.6s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
         .category-title {
-            margin-top: 70px; margin-bottom: 25px;
-            font-size: 1.6rem;
+            margin-top: 60px;
+            margin-bottom: 30px;
+            font-size: 1.8rem;
             text-transform: uppercase;
-            letter-spacing: 2px;
-            border-left: 4px solid var(--accent);
-            padding-left: 15px;
-            text-shadow: 0 0 10px var(--accent-glow);
+            letter-spacing: 3px;
+            border-left: 5px solid var(--accent);
+            padding-left: 20px;
+            text-shadow: 0 0 20px var(--accent-glow);
+            background: linear-gradient(90deg, rgba(124,77,255,0.1), transparent);
+            padding-top: 10px;
+            padding-bottom: 10px;
         }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; }
 
-        /* Cards */
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 30px; }
+
         .card {
-            background: var(--card-bg);
-            padding: 30px;
-            border-radius: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            background: var(--glass);
+            backdrop-filter: blur(15px);
+            padding: 35px;
+            border-radius: 25px;
+            border: 1px solid var(--glass-border);
             transition: 0.4s;
             position: relative;
-            backdrop-filter: blur(10px);
+            overflow: hidden;
         }
         .card:hover {
             transform: translateY(-10px);
             border-color: var(--accent);
-            box-shadow: 0 0 30px var(--accent-glow);
+            box-shadow: 0 0 40px var(--accent-glow);
         }
-        .card h3 { margin-top: 0; font-size: 1.3rem; }
-        .card .price { font-size: 1.8rem; color: var(--accent); font-weight: 800; margin: 15px 0; text-shadow: 0 0 15px var(--accent-glow); }
-        .card .desc { color: var(--text-muted); font-size: 0.95rem; margin-bottom: 25px; }
+        .card h3 { margin-top: 0; font-size: 1.4rem; color: white; }
+        .card .price {
+            font-size: 2rem;
+            color: var(--accent);
+            font-weight: 800;
+            margin: 20px 0;
+            text-shadow: 0 0 20px var(--accent-glow);
+        }
+        .card .desc { color: var(--text-muted); font-size: 0.95rem; margin-bottom: 25px; line-height: 1.6; }
 
         .btn-buy {
             width: 100%;
-            padding: 14px;
+            padding: 16px;
             background: linear-gradient(45deg, var(--accent), #5e35b1);
-            border: none; color: white; border-radius: 12px;
-            font-weight: bold; cursor: pointer; text-transform: uppercase;
+            border: none;
+            color: white;
+            border-radius: 15px;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
             transition: 0.3s;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
         }
-        .btn-buy:hover { box-shadow: 0 0 25px var(--accent-glow); }
+        .btn-buy:hover { box-shadow: 0 0 30px var(--accent-glow); transform: scale(1.02); }
 
-        /* Modals */
+        /* --- MODALS (Glassmorphism) --- */
         .modal {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9); justify-content: center; align-items: center; z-index: 1000;
-            backdrop-filter: blur(5px);
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(8px);
         }
         .modal-content {
-            background: #111; padding: 40px; border-radius: 20px; text-align: center;
-            max-width: 400px; width: 90%; border: 1px solid var(--accent);
-            box-shadow: 0 0 50px var(--accent-glow);
+            background: #111;
+            padding: 40px;
+            border-radius: 25px;
+            text-align: center;
+            max-width: 450px;
+            width: 90%;
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 0 60px rgba(124, 77, 255, 0.2);
             position: relative;
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
-        .qr-code { width: 100%; max-width: 260px; border-radius: 15px; margin: 25px 0; border: 3px solid white; }
-        
-        .close-btn { background: #333; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; margin-top: 15px; }
+        @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
-        /* Helpers */
-        .warning-box {
-            background:rgba(255, 193, 7, 0.1); border:1px solid #ffc107; color:#ffc107; 
-            padding:10px; border-radius:8px; font-size:0.85rem; margin-bottom:20px; text-align: left;
+        .modal-input {
+            width: 100%;
+            padding: 14px;
+            margin-bottom: 20px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            color: white;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: 0.3s;
+            box-sizing: border-box;
+        }
+        .modal-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 15px var(--accent-glow); }
+        .modal-label { display: block; text-align: left; color: var(--text-muted); font-size: 0.9rem; margin-bottom: 8px; margin-left: 5px; }
+
+        .qr-code { width: 100%; max-width: 240px; border-radius: 15px; margin: 25px 0; border: 4px solid white; }
+        
+        .close-btn {
+            background: rgba(255,255,255,0.05);
+            color: #aaa;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-top: 15px;
+            width: 100%;
+            font-weight: 600;
+        }
+        .close-btn:hover { background: rgba(255,255,255,0.1); color: white; }
+
+        /* --- TABLE STYLING --- */
+        .table-container { overflow-x: auto; border-radius: 15px; border: 1px solid var(--glass-border); }
+        table { width: 100%; border-collapse: collapse; background: rgba(20,20,20,0.6); }
+        th { padding: 20px; text-align: left; color: var(--accent); border-bottom: 1px solid #333; font-size: 0.9rem; letter-spacing: 1px; text-transform: uppercase; }
+        td { padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.95rem; }
+        tr:hover { background: rgba(255,255,255,0.02); }
+
+        .status-badge {
+            padding: 5px 12px;
+            border-radius: 50px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            display: inline-block;
+            border: 1px solid transparent;
         }
 
         /* Footer */
-        footer { background: rgba(10, 10, 10, 0.8); padding: 60px 20px; text-align: center; margin-top: 80px; border-top: 1px solid rgba(255, 255, 255, 0.05); }
-        .social-links { display: flex; justify-content: center; gap: 25px; margin-bottom: 30px; }
+        footer {
+            background: rgba(10, 10, 10, 0.9);
+            padding: 80px 20px;
+            text-align: center;
+            margin-top: 100px;
+            border-top: 1px solid var(--glass-border);
+        }
         .social-btn {
-            width: 55px; height: 55px; border-radius: 50%; background: rgba(255, 255, 255, 0.05);
-            display: flex; align-items: center; justify-content: center; color: white;
-            font-size: 1.6rem; text-decoration: none; transition: 0.4s; border: 1px solid rgba(255, 255, 255, 0.1);
+            width: 60px; height: 60px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.05);
+            display: flex; align-items: center; justify-content: center;
+            color: white; font-size: 1.8rem; text-decoration: none;
+            transition: 0.4s; border: 1px solid var(--glass-border);
         }
-        .social-btn:hover { transform: scale(1.1); border-color: var(--accent); background: var(--accent); box-shadow: 0 0 20px var(--accent-glow); }
-        .whatsapp-float {
-            position: fixed; bottom: 30px; right: 30px; background: #25d366; color: white;
-            width: 65px; height: 65px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-            font-size: 2.2rem; box-shadow: 0 0 20px rgba(37, 211, 102, 0.5); z-index: 100; text-decoration: none; transition: 0.3s;
-        }
-        .whatsapp-float:hover { transform: scale(1.1); box-shadow: 0 0 30px rgba(37, 211, 102, 0.8); }
+        .social-btn:hover { transform: scale(1.1) rotate(10deg); border-color: var(--accent); background: var(--accent); box-shadow: 0 0 30px var(--accent-glow); }
 
+        .whatsapp-float {
+            position: fixed; bottom: 30px; right: 30px;
+            background: #25d366; color: white;
+            width: 70px; height: 70px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 2.5rem;
+            box-shadow: 0 0 30px rgba(37, 211, 102, 0.4);
+            z-index: 100;
+            transition: 0.3s;
+            text-decoration: none;
+        }
+        .whatsapp-float:hover { transform: scale(1.1); box-shadow: 0 0 50px rgba(37, 211, 102, 0.8); }
+
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 2.5rem; }
+            .grid { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
 
+    <div id="toast-container"></div>
+
     <header id="top">
         <div class="logo">Fame<span>X</span></div>
         <div class="nav-actions">
-            <button class="btn-login" id="loginBtn">Login / Sign Up</button>
+            <button class="btn-login" id="loginBtn">Login</button>
             <button class="btn-menu" id="menuBtn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
         </div>
     </header>
 
     <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
+
     <div class="sidebar" id="sidebar">
         <div class="profile-header">
-            <img src="https://via.placeholder.com/80" alt="User" class="user-pic" id="sideUserPic">
+            <img src="https://via.placeholder.com/90" alt="User" class="user-pic" id="sideUserPic">
             <div class="user-name" id="sideUserName">Guest</div>
             <div style="font-size: 0.8rem; color: #888;" id="sideUserEmail">Not logged in</div>
+            
+            <div class="stats-row">
+                <div class="stat-badge">
+                    <i class="fas fa-box" style="color:var(--accent);"></i> 
+                    <span id="statOrders">0</span> Orders
+                </div>
+                <div class="stat-badge">
+                    <i class="fas fa-money-bill-wave" style="color:var(--gold);"></i> 
+                    ₹<span id="statSpent">0</span> Spent
+                </div>
+            </div>
         </div>
-        
+
         <div class="balance-card">
             <div class="balance-label">Current Balance</div>
             <div class="balance-amount">₹<span id="userBalance">0</span></div>
         </div>
 
         <div class="menu-list">
-            <div class="menu-item" onclick="showSection('services-container')">
-                <i class="fas fa-layer-group"></i> Services / New Order
+            <div class="menu-item" onclick="showSection('services-container')"> 
+                <i class="fas fa-layer-group"></i> Services
             </div>
-            <div class="menu-item" onclick="showSection('my-orders-section'); loadOrderHistory();">
-                <i class="fas fa-list-ul"></i> My Orders
+            <div class="menu-item" onclick="showSection('my-orders-section'); loadOrderHistory();"> 
+                <i class="fas fa-list-ul"></i> Order History
             </div>
-            <div class="menu-item" onclick="openPaymentModal()">
-                <i class="fas fa-wallet"></i> Add Funds
+            <div class="menu-item" onclick="openPaymentModal()"> 
+                <i class="fas fa-plus-circle"></i> Add Funds 
             </div>
-            <div class="menu-item" onclick="openVerifyModal()">
-                <i class="fas fa-file-invoice-dollar"></i> Verify Payment
+            <div class="menu-item" onclick="openVerifyModal()"> 
+                <i class="fas fa-check-double"></i> Verify Payment 
             </div>
-            <div class="menu-item" onclick="showSection('payment-history-section'); loadPaymentHistory();">
-                <i class="fas fa-history"></i> Payment Status
+            <div class="menu-item" onclick="openReferralModal()"> 
+                <i class="fas fa-gift" style="color:var(--gold);"></i> Refer & Earn 
             </div>
-            <a href="#footer-support" class="menu-item" onclick="toggleSidebar()">
-                <i class="fas fa-headset"></i> Help & Support
+            <div class="menu-item" onclick="showSection('payment-history-section'); loadPaymentHistory();"> 
+                <i class="fas fa-history"></i> Transactions 
+            </div>
+            <a href="#footer-support" class="menu-item" onclick="toggleSidebar()"> 
+                <i class="fas fa-headset"></i> Support 
             </a>
         </div>
 
         <button class="btn-logout" id="logoutBtn">
             <i class="fas fa-sign-out-alt"></i> Log Out
         </button>
-
+        
         <p style="color:#444; font-size:0.7rem; margin-top:30px; text-align:center;">
-            v1.3.0 • Premium SMM
+            v2.0.0 • Ultra Premium
         </p>
     </div>
 
     <div class="hero">
         <div class="promo-badge">
-            <i class="fas fa-bolt"></i> SPECIAL OFFER: 60% CASHBACK FOR NEW USERS!
+            <i class="fas fa-bolt"></i> NEW: REFER FRIENDS & EARN REAL CASH!
         </div>
-        
         <h1>Elevate Your Presence</h1>
         <p>Premium SMM Services. Instant Delivery. Dark Aesthetics.</p>
     </div>
@@ -323,50 +539,47 @@
         </div>
 
     <div class="container section" id="my-orders-section">
-        <h2 style="text-align:center; margin-bottom:30px; color:white;">My Orders</h2>
-        <div style="overflow-x:auto;">
-            <table style="width:100%; border-collapse:collapse; background:var(--card-bg); border-radius:10px;">
+        <h2 style="text-align:center; margin-bottom:30px; color:white;">Order History</h2>
+        <div class="table-container">
+            <table>
                 <thead>
-                    <tr style="border-bottom:1px solid #333; color:var(--accent);">
-                        <th style="padding:15px; text-align:left;">ID</th>
-                        <th style="padding:15px; text-align:left;">Service</th>
-                        <th style="padding:15px; text-align:left;">Link</th>
-                        <th style="padding:15px; text-align:center;">Charge</th>
-                        <th style="padding:15px; text-align:center;">Status</th>
+                    <tr>
+                        <th>Date & Time</th>
+                        <th>Service</th>
+                        <th>Link</th>
+                        <th style="text-align:center;">Charge</th>
+                        <th style="text-align:center;">Status</th>
                     </tr>
                 </thead>
-                <tbody id="orders-table-body">
-                </tbody>
+                <tbody id="orders-table-body"></tbody>
             </table>
         </div>
     </div>
 
     <div class="container section" id="payment-history-section">
-        <h2 style="text-align:center; margin-bottom:30px; color:white;">Payment Status</h2>
-        <div style="overflow-x:auto;">
-            <table style="width:100%; border-collapse:collapse; background:var(--card-bg); border-radius:10px;">
+        <h2 style="text-align:center; margin-bottom:30px; color:white;">Transactions</h2>
+        <div class="table-container">
+            <table>
                 <thead>
-                    <tr style="border-bottom:1px solid #333; color:var(--accent);">
-                        <th style="padding:15px; text-align:left;">Date</th>
-                        <th style="padding:15px; text-align:left;">Amount</th>
-                        <th style="padding:15px; text-align:left;">UTR / Sender</th>
-                        <th style="padding:15px; text-align:center;">Status</th>
+                    <tr>
+                        <th>Date & Time</th>
+                        <th>Amount</th>
+                        <th>UTR / Sender</th>
+                        <th style="text-align:center;">Status</th>
                     </tr>
                 </thead>
-                <tbody id="payment-table-body">
-                    </tbody>
+                <tbody id="payment-table-body"></tbody>
             </table>
         </div>
     </div>
 
     <div class="modal" id="paymentModal">
         <div class="modal-content">
-            <h2>Add Funds</h2>
-            <div class="warning-box">
+            <h2 style="color:white; margin-top:0;">Add Funds</h2>
+            <div class="warning-box" style="background:rgba(255,193,7,0.1); border:1px solid #ffc107; color:#ffc107; padding:10px; border-radius:10px; font-size:0.85rem; margin-bottom:20px; text-align:left;">
                 <i class="fas fa-exclamation-circle"></i> <strong>Rules:</strong><br>
                 • Minimum Deposit: <strong>₹50</strong><br>
                 • <strong>PhonePe ONLY</strong>. No Paytm/GPay.<br>
-                • Verification takes 2-4 hours.
             </div>
             <img src="https://imagefa.st/images/2025/12/25/PhonePeQR_India-Post-Payment-Bank---02681.png" alt="QR Code" class="qr-code">
             <p style="color: var(--text-muted); font-size: 0.9rem;">
@@ -377,57 +590,82 @@
     </div>
 
     <div class="modal" id="verifyPaymentModal">
-        <div class="modal-content" style="text-align:left; max-width:400px;">
-            <h2 style="text-align:center;">Verify Payment</h2>
+        <div class="modal-content" style="text-align:left;">
+            <h2 style="text-align:center; color:white;">Verify Payment</h2>
             
-            <label style="color:var(--text-muted); font-size:0.9rem;">Amount Paid (₹)</label>
-            <input type="number" id="verifyAmount" placeholder="e.g. 50" style="width:100%; padding:10px; margin-bottom:15px; background:#222; border:1px solid #444; color:white; border-radius:5px;">
-
-            <label style="color:var(--text-muted); font-size:0.9rem;">Sender Name</label>
-            <input type="text" id="verifySender" placeholder="Name on PhonePe" style="width:100%; padding:10px; margin-bottom:15px; background:#222; border:1px solid #444; color:white; border-radius:5px;">
-
-            <label style="color:var(--text-muted); font-size:0.9rem;">UTR / Transaction ID</label>
-            <input type="text" id="verifyUTR" placeholder="T230..." style="width:100%; padding:10px; margin-bottom:15px; background:#222; border:1px solid #444; color:white; border-radius:5px;">
-
+            <label class="modal-label">Amount Paid (₹)</label>
+            <input type="number" id="verifyAmount" class="modal-input" placeholder="e.g. 50">
+            
+            <label class="modal-label">Sender Name</label>
+            <input type="text" id="verifySender" class="modal-input" placeholder="Name on PhonePe">
+            
+            <label class="modal-label">UTR / Transaction ID</label>
+            <input type="text" id="verifyUTR" class="modal-input" placeholder="T23078...">
+            
             <button id="btnSubmitVerify" class="btn-buy" onclick="submitPaymentVerification()">Submit for Verification</button>
-            <button class="close-btn" onclick="closeVerifyModal()" style="width:100%; margin-top:10px; background:transparent; border:1px solid #444;">Cancel</button>
+            <button class="close-btn" onclick="closeVerifyModal()">Cancel</button>
         </div>
     </div>
 
     <div class="modal" id="orderModal">
         <div class="modal-content" style="text-align:left; max-width:500px;">
-            <h2 style="text-align:center; margin-top:0;">New Order</h2>
+            <h2 style="text-align:center; margin-top:0; color:white;">New Order</h2>
             
-            <div class="warning-box">
-                <i class="fas fa-exclamation-triangle"></i> <strong>Important:</strong><br>
+            <div class="warning-box" style="background:rgba(124,77,255,0.1); border:1px solid var(--accent); color:var(--accent); padding:10px; border-radius:10px; font-size:0.85rem; margin-bottom:20px;">
+                <i class="fas fa-info-circle"></i> <strong>Note:</strong><br>
                 • Account must be <strong>Public</strong>.<br>
-                • For Followers: Turn OFF "Flag for Review".
             </div>
 
-            <label style="color:var(--text-muted); font-size:0.9rem;">Service</label>
-            <input type="text" id="orderServiceName" readonly style="width:100%; padding:10px; margin-bottom:15px; background:#222; border:1px solid #444; color:white; border-radius:5px;">
+            <label class="modal-label">Service</label>
+            <input type="text" id="orderServiceName" class="modal-input" readonly>
             
-            <label style="color:var(--text-muted); font-size:0.9rem;">Link (Instagram Post/Profile)</label>
-            <input type="text" id="orderLink" placeholder="https://instagram.com/..." style="width:100%; padding:10px; margin-bottom:15px; background:#222; border:1px solid #444; color:white; border-radius:5px;">
+            <label class="modal-label">Link</label>
+            <input type="text" id="orderLink" class="modal-input" placeholder="https://instagram.com/...">
+            
+            <label class="modal-label">Quantity (Min: 10)</label>
+            <input type="number" id="orderQty" class="modal-input" placeholder="100" oninput="calculatePrice()">
+            
+            <div style="text-align:right; margin-bottom:20px; font-size:1.2rem;">
+                Total: <span id="orderPrice" style="color:var(--accent); font-weight:bold;">₹0</span>
+            </div>
+            
+            <button id="btnConfirmOrder" class="btn-buy" onclick="submitOrder()">Place Order</button>
+            <button class="close-btn" onclick="closeOrderModal()">Cancel</button>
+        </div>
+    </div>
 
-            <label style="color:var(--text-muted); font-size:0.9rem;">Quantity (Min: 10)</label>
-            <input type="number" id="orderQty" placeholder="100" oninput="calculatePrice()" style="width:100%; padding:10px; margin-bottom:15px; background:#222; border:1px solid #444; color:white; border-radius:5px;">
-
-            <div style="text-align:right; margin-bottom:20px; font-size:1.1rem;">
-                Total Charge: <span id="orderPrice" style="color:var(--accent); font-weight:bold;">₹0</span>
+    <div class="modal" id="referralModal">
+        <div class="modal-content" style="text-align:center;">
+            <h2 style="color:var(--gold); margin-top:0;"><i class="fas fa-gift"></i> Refer & Earn</h2>
+            <p style="color:var(--text-muted);">Share your code. When friends deposit, you get a 10% Bonus!</p>
+            
+            <div style="background:#111; padding:20px; border-radius:15px; margin:25px 0; border:2px dashed var(--accent);">
+                <div style="font-size:0.8rem; color:#888; margin-bottom:5px;">YOUR REFERRAL CODE</div>
+                <div id="myReferralCode" style="font-size:2rem; font-weight:bold; letter-spacing:4px; color:white; text-shadow:0 0 10px var(--accent);">LOADING...</div>
             </div>
 
-            <button id="btnConfirmOrder" class="btn-buy" onclick="submitOrder()">Place Order</button>
-            <button class="close-btn" onclick="closeOrderModal()" style="width:100%; margin-top:10px; background:transparent; border:1px solid #444;">Cancel</button>
+            <div style="display:flex; justify-content:space-between; gap:15px; margin-bottom:25px;">
+                <div style="width:48%; background:rgba(255,255,255,0.05); padding:15px; border-radius:12px;">
+                    <div style="font-size:0.8rem; color:#888;">Total Referred</div>
+                    <div id="refCount" style="font-size:1.4rem; font-weight:bold;">0</div>
+                </div>
+                <div style="width:48%; background:rgba(255,215,0,0.1); padding:15px; border-radius:12px; border:1px solid rgba(255,215,0,0.2);">
+                    <div style="font-size:0.8rem; color:#888;">Earnings</div>
+                    <div style="font-size:1.4rem; font-weight:bold; color:var(--gold);">₹<span id="refEarnings">0</span></div>
+                </div>
+            </div>
+
+            <button class="btn-buy" onclick="withdrawReferral()" style="background:var(--gold); color:black; margin-bottom:10px; box-shadow:0 0 15px var(--gold-glow);">Withdraw to Balance</button>
+            <button class="close-btn" onclick="document.getElementById('referralModal').style.display='none'">Close</button>
         </div>
     </div>
 
     <footer id="footer-support">
         <div class="social-links">
-            <a href="https://t.me/therealghost_here" target="_blank" class="social-btn telegram"><i class="fab fa-telegram-plane"></i></a>
-            <a href="https://www.instagram.com/lil.shiinee?igsh=MWpzMzdwazYxZ2hwNQ==" target="_blank" class="social-btn instagram"><i class="fab fa-instagram"></i></a>
+            <a href="https://t.me/therealghost_here" target="_blank" class="social-btn"><i class="fab fa-telegram-plane"></i></a>
+            <a href="https://www.instagram.com/lil.shiinee" target="_blank" class="social-btn"><i class="fab fa-instagram"></i></a>
         </div>
-        <p style="color: var(--text-muted);">&copy; 2024 FameX. All rights reserved.</p>
+        <p style="color: var(--text-muted);">&copy; 2026 FameX. All rights reserved.</p>
     </footer>
 
     <a href="https://wa.me/918653340400" target="_blank" class="whatsapp-float"><i class="fab fa-whatsapp"></i></a>
@@ -435,8 +673,9 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, updateDoc, addDoc, collection, onSnapshot, query, where, orderBy } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, addDoc, collection, onSnapshot, query, where, orderBy, increment, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
+        // CONFIG
         const firebaseConfig = {
             apiKey: "AIzaSyAN_hd8rr46X25lOZ0cKwe6pAVl2sh61AI",
             authDomain: "famex-4cb1e.firebaseapp.com",
@@ -456,43 +695,65 @@
         let currentBalance = 0;
         let selectedServicePricePer1k = 0;
 
+        // UI ELEMENTS
         const loginBtn = document.getElementById('loginBtn');
         const menuBtn = document.getElementById('menuBtn');
         const logoutBtn = document.getElementById('logoutBtn');
 
-        // AUTH & DATABASE LISTENER
+        // --- TOAST SYSTEM (CUSTOM ALERTS) ---
+        window.showToast = (message, type = 'success') => {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            const icon = type === 'success' ? '<i class="fas fa-check-circle" style="color:var(--success)"></i>' : '<i class="fas fa-times-circle" style="color:var(--danger)"></i>';
+            toast.innerHTML = `${icon} <span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.animation = 'fadeOut 0.3s forwards';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // --- AUTH & DATA LISTENER ---
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 currentUser = user;
                 loginBtn.style.display = 'none';
                 menuBtn.style.display = 'block';
-                
                 document.getElementById('sideUserName').innerText = user.displayName;
                 document.getElementById('sideUserEmail').innerText = user.email;
                 document.getElementById('sideUserPic').src = user.photoURL;
 
                 const userRef = doc(db, "users", user.uid);
                 
-                // ⚡ REAL-TIME USER DATA & FORCE LOGOUT CHECK ⚡
                 onSnapshot(userRef, (docSnap) => {
                     if (docSnap.exists()) {
                         const data = docSnap.data();
-
-                        // 1. Check for Force Logout (Kick)
+                        
+                        // Force Logout Check
                         if (data.forceLogout) {
-                            alert("You have been logged out by the Administrator.");
-                            // Reset the flag and sign out
+                            showToast("Logged out by Administrator.", "error");
                             updateDoc(userRef, { forceLogout: false });
                             signOut(auth).then(() => window.location.reload());
                             return;
                         }
 
-                        // 2. Update Balance
-                        currentBalance = data.balance;
-                        document.getElementById('userBalance').innerText = currentBalance;
+                        // Update UI Stats
+                        currentBalance = data.balance || 0;
+                        document.getElementById('userBalance').innerText = currentBalance.toFixed(2);
+                        document.getElementById('statOrders').innerText = data.totalOrders || 0;
+                        document.getElementById('statSpent').innerText = (data.totalSpent || 0).toFixed(0);
+
                     } else {
-                        // Create profile for new users
-                        setDoc(userRef, { name: user.displayName, email: user.email, balance: 0 });
+                        // Create New User Profile
+                        setDoc(userRef, { 
+                            name: user.displayName, 
+                            email: user.email, 
+                            balance: 0,
+                            totalOrders: 0,
+                            totalSpent: 0,
+                            referralEarnings: 0
+                        });
                     }
                 });
             } else {
@@ -507,9 +768,9 @@
         });
 
         loginBtn.addEventListener('click', () => signInWithPopup(auth, provider).catch(console.error));
-        logoutBtn.addEventListener('click', () => signOut(auth).then(()=>alert("Logged out")));
+        logoutBtn.addEventListener('click', () => signOut(auth).then(() => showToast("Logged out successfully")));
 
-        // NAVIGATION
+        // --- NAVIGATION & UI ---
         window.toggleSidebar = () => {
             document.getElementById('sidebar').classList.toggle('active');
             document.getElementById('overlay').classList.toggle('active');
@@ -521,15 +782,15 @@
             document.getElementById('payment-history-section').style.display = 'none';
             
             const target = document.getElementById(sectionId);
-            if(sectionId === 'services-container') target.style.display = 'grid';
+            if(sectionId === 'services-container') target.style.display = 'grid'; 
             else target.style.display = 'block';
             
             toggleSidebar();
         }
 
-        // --- NEW ORDER LOGIC ---
+        // --- ORDER LOGIC (UPDATED WITH STATS) ---
         window.openOrderForm = (serviceName, pricePer1k) => {
-            if (!currentUser) return alert("Please Login first!");
+            if (!currentUser) return showToast("Please Login first!", "error");
             selectedServicePricePer1k = pricePer1k;
             document.getElementById('orderServiceName').value = serviceName;
             document.getElementById('orderPrice').innerText = "₹0";
@@ -554,37 +815,44 @@
             const serviceName = document.getElementById('orderServiceName').value;
             const totalCost = (selectedServicePricePer1k * qty) / 1000;
 
-            if (!link) return alert("Please enter the link!");
-            if (!qty || qty < 10) return alert("Minimum quantity is 10.");
-            if (currentBalance < totalCost) return alert(`Insufficient Balance! You need ₹${totalCost.toFixed(2)}.`);
+            if (!link) return showToast("Please enter the link!", "error");
+            if (!qty || qty < 10) return showToast("Minimum quantity is 10.", "error");
+            if (currentBalance < totalCost) return showToast(`Insufficient Balance! You need ₹${totalCost.toFixed(2)}`, "error");
 
-            if(!confirm(`Confirm Order?\nService: ${serviceName}\nQty: ${qty}\nCost: ₹${totalCost.toFixed(2)}`)) return;
+            if(!confirm(`Confirm Order?\nService: ${serviceName}\nCost: ₹${totalCost.toFixed(2)}`)) return;
 
             const btn = document.getElementById('btnConfirmOrder');
             btn.innerText = "Processing...";
             btn.disabled = true;
-            
+
             try {
                 const userRef = doc(db, "users", currentUser.uid);
-                await updateDoc(userRef, { balance: currentBalance - totalCost });
+                
+                // Deduct Balance & Update Stats
+                await updateDoc(userRef, { 
+                    balance: currentBalance - totalCost,
+                    totalOrders: increment(1),
+                    totalSpent: increment(totalCost)
+                });
 
+                // Save Order
                 await addDoc(collection(db, "orders"), {
                     userId: currentUser.uid,
                     userName: currentUser.displayName,
-                    userEmail: currentUser.email, // Save email for Admin
+                    userEmail: currentUser.email,
                     service: serviceName,
                     link: link,
                     quantity: qty,
                     cost: totalCost,
                     status: "Pending",
-                    timestamp: new Date()
+                    timestamp: serverTimestamp() // Server Time
                 });
 
-                alert("Order Placed Successfully! 🚀");
+                showToast("Order Placed Successfully! 🚀", "success");
                 window.closeOrderModal();
             } catch (error) {
                 console.error(error);
-                alert("Order Failed: " + error.message);
+                showToast("Order Failed: " + error.message, "error");
             } finally {
                 btn.innerText = "Place Order";
                 btn.disabled = false;
@@ -593,38 +861,39 @@
 
         window.closeOrderModal = () => document.getElementById('orderModal').style.display = 'none';
 
-        // --- REAL-TIME ORDER HISTORY (Sorting Removed) ---
+        // --- ORDER HISTORY (WITH DATE/TIME) ---
         window.loadOrderHistory = () => {
             if(!currentUser) return;
             const tbody = document.getElementById('orders-table-body');
             tbody.innerHTML = "<tr><td colspan='5' style='text-align:center; padding:20px;'>Loading...</td></tr>";
-
-            const q = query(collection(db, "orders"), where("userId", "==", currentUser.uid));
+            
+            const q = query(collection(db, "orders"), where("userId", "==", currentUser.uid), orderBy("timestamp", "desc"));
             
             onSnapshot(q, (snapshot) => {
                 tbody.innerHTML = "";
                 if(snapshot.empty) {
-                    tbody.innerHTML = "<tr><td colspan='5' style='text-align:center; padding:20px; color:#888;'>No orders found.</td></tr>";
+                    tbody.innerHTML = "<tr><td colspan='5' style='text-align:center; padding:20px; color:#888;'>No orders yet.</td></tr>";
                     return;
                 }
-                
                 snapshot.forEach(doc => {
                     const order = doc.data();
-                    let statusColor = '#ffc107'; // Pending
-                    if(order.status === 'Processing') statusColor = '#2196f3';
-                    if(order.status === 'Completed') statusColor = '#00e676';
-                    if(order.status === 'Cancelled') statusColor = '#ff5252';
+                    let statusClass = '#ffc107'; 
+                    if(order.status === 'Processing') statusClass = '#2196f3';
+                    if(order.status === 'Completed') statusClass = '#00e676';
+                    if(order.status === 'Cancelled') statusClass = '#ff5252';
+
+                    // Format Date
+                    const dateObj = order.timestamp ? order.timestamp.toDate() : new Date();
+                    const dateStr = dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
                     const row = `
-                        <tr style="border-bottom:1px solid #222;">
-                            <td style="padding:15px; font-size:0.8rem; color:#666;">#${doc.id.substr(0,5)}</td>
-                            <td style="padding:15px;">${order.service}<br><span style="font-size:0.8rem; color:#888;">Qty: ${order.quantity}</span></td>
-                            <td style="padding:15px; font-size:0.8rem; color:var(--accent); max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                                <a href="${order.link}" target="_blank" style="color:var(--accent); text-decoration:none;">Link 🔗</a>
-                            </td>
-                            <td style="padding:15px; text-align:center;">₹${order.cost.toFixed(2)}</td>
-                            <td style="padding:15px; text-align:center;">
-                                <span style="color:${statusColor}; font-weight:bold; font-size:0.85rem; border:1px solid ${statusColor}; padding:2px 8px; border-radius:4px;">
+                        <tr>
+                            <td style="color:#888; font-size:0.85rem;">${dateStr}</td>
+                            <td>${order.service}<br><span style="font-size:0.8rem; color:#666;">Qty: ${order.quantity}</span></td>
+                            <td><a href="${order.link}" target="_blank" style="color:var(--accent); text-decoration:none;">Link 🔗</a></td>
+                            <td style="text-align:center; color:white;">₹${order.cost.toFixed(2)}</td>
+                            <td style="text-align:center;">
+                                <span class="status-badge" style="color:${statusClass}; border-color:${statusClass};">
                                     ${order.status}
                                 </span>
                             </td>
@@ -635,36 +904,87 @@
             });
         }
 
-        // --- PAYMENT STATUS LOGIC ---
+        // --- PAYMENT LOGIC (ANTI-SPAM) ---
+        window.openPaymentModal = () => { document.getElementById('paymentModal').style.display = 'flex'; toggleSidebar(); }
+        window.closeModal = () => { document.getElementById('paymentModal').style.display = 'none'; }
+        window.openVerifyModal = () => { document.getElementById('verifyPaymentModal').style.display = 'flex'; toggleSidebar(); }
+        window.closeVerifyModal = () => { document.getElementById('verifyPaymentModal').style.display = 'none'; }
+
+        window.submitPaymentVerification = async () => {
+            const amount = document.getElementById('verifyAmount').value;
+            const sender = document.getElementById('verifySender').value;
+            const utr = document.getElementById('verifyUTR').value;
+
+            if(!amount || !sender || !utr) return showToast("Please fill all fields.", "error");
+
+            const btn = document.getElementById('btnSubmitVerify');
+            btn.innerText = "Checking...";
+            btn.disabled = true;
+
+            try {
+                // ANTI-SPAM: Check if user already has a pending request
+                const q = query(
+                    collection(db, "payment_verifications"), 
+                    where("userId", "==", currentUser.uid),
+                    where("status", "==", "Checking") 
+                );
+                const querySnapshot = await getDocs(q);
+
+                if (!querySnapshot.empty) {
+                    throw new Error("You already have a pending request! Please wait.");
+                }
+
+                await addDoc(collection(db, "payment_verifications"), {
+                    userId: currentUser.uid,
+                    userName: currentUser.displayName,
+                    userEmail: currentUser.email,
+                    amount: parseFloat(amount),
+                    senderName: sender,
+                    utr: utr,
+                    status: "Checking",
+                    timestamp: serverTimestamp()
+                });
+
+                showToast("Verification Submitted! Admin will approve shortly.", "success");
+                window.closeVerifyModal();
+
+            } catch (e) {
+                showToast(e.message, "error");
+            } finally {
+                btn.innerText = "Submit for Verification";
+                btn.disabled = false;
+            }
+        }
+
         window.loadPaymentHistory = () => {
             if(!currentUser) return;
             const tbody = document.getElementById('payment-table-body');
             tbody.innerHTML = "<tr><td colspan='4' style='text-align:center; padding:20px;'>Loading...</td></tr>";
-
-            const q = query(collection(db, "payment_verifications"), where("userId", "==", currentUser.uid));
+            
+            const q = query(collection(db, "payment_verifications"), where("userId", "==", currentUser.uid), orderBy("timestamp", "desc"));
             
             onSnapshot(q, (snapshot) => {
                 tbody.innerHTML = "";
                 if(snapshot.empty) {
-                    tbody.innerHTML = "<tr><td colspan='4' style='text-align:center; padding:20px; color:#888;'>No payment history found.</td></tr>";
+                    tbody.innerHTML = "<tr><td colspan='4' style='text-align:center; padding:20px; color:#888;'>No transactions found.</td></tr>";
                     return;
                 }
-                
                 snapshot.forEach(doc => {
                     const payment = doc.data();
-                    let statusColor = '#ffc107'; // Checking
-                    if(payment.status === 'Success' || payment.status === 'Approved') statusColor = '#00e676';
-                    if(payment.status === 'Rejected') statusColor = '#ff5252';
-                    
-                    const date = payment.timestamp ? new Date(payment.timestamp.seconds * 1000).toLocaleDateString() : 'N/A';
+                    let statusClass = '#ffc107'; 
+                    if(payment.status === 'Approved') statusClass = '#00e676';
+                    if(payment.status === 'Rejected') statusClass = '#ff5252';
+
+                    const dateObj = payment.timestamp ? payment.timestamp.toDate() : new Date();
+                    const dateStr = dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
                     const row = `
-                        <tr style="border-bottom:1px solid #222;">
-                            <td style="padding:15px; font-size:0.8rem; color:#888;">${date}</td>
-                            <td style="padding:15px; color:var(--gold);">₹${payment.amount}</td>
-                            <td style="padding:15px; font-size:0.8rem;">${payment.utr}<br><span style="color:#666;">${payment.senderName}</span></td>
-                            <td style="padding:15px; text-align:center;">
-                                <span style="color:${statusColor}; font-weight:bold; font-size:0.85rem; border:1px solid ${statusColor}; padding:2px 8px; border-radius:4px;">
+                        <tr>
+                            <td style="color:#888; font-size:0.85rem;">${dateStr}</td>
+                            <td style="color:var(--gold);">₹${payment.amount}</td>
+                            <td>${payment.utr}<br><span style="color:#666; font-size:0.8rem;">${payment.senderName}</span></td>
+                            <td style="text-align:center;">
+                                <span class="status-badge" style="color:${statusClass}; border-color:${statusClass};">
                                     ${payment.status}
                                 </span>
                             </td>
@@ -675,84 +995,69 @@
             });
         }
 
-        // --- VERIFY PAYMENT LOGIC ---
-        window.openPaymentModal = () => { document.getElementById('paymentModal').style.display = 'flex'; toggleSidebar(); }
-        window.closeModal = () => { document.getElementById('paymentModal').style.display = 'none'; }
-        
-        window.openVerifyModal = () => { document.getElementById('verifyPaymentModal').style.display = 'flex'; toggleSidebar(); }
-        window.closeVerifyModal = () => { document.getElementById('verifyPaymentModal').style.display = 'none'; }
+        // --- REFERRAL SYSTEM ---
+        window.openReferralModal = async () => {
+            if (!currentUser) return showToast("Please login first", "error");
+            document.getElementById('referralModal').style.display = 'flex';
+            toggleSidebar();
 
-        window.submitPaymentVerification = async () => {
-            const amount = document.getElementById('verifyAmount').value;
-            const sender = document.getElementById('verifySender').value;
-            const utr = document.getElementById('verifyUTR').value;
+            const userRef = doc(db, "users", currentUser.uid);
+            const docSnap = await getDoc(userRef);
+            
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                
+                // Generate Code if missing
+                if (!data.referralCode) {
+                    const code = (currentUser.displayName.substring(0,3) + Math.floor(1000 + Math.random() * 9000)).toUpperCase().replace(/\s/g, '');
+                    await updateDoc(userRef, { 
+                        referralCode: code,
+                        referralEarnings: 0,
+                        referralCount: 0
+                    });
+                    document.getElementById('myReferralCode').innerText = code;
+                } else {
+                    document.getElementById('myReferralCode').innerText = data.referralCode;
+                }
 
-            if(!amount || !sender || !utr) return alert("Please fill all fields.");
-
-            const btn = document.getElementById('btnSubmitVerify');
-            btn.innerText = "Submitting...";
-            btn.disabled = true;
-
-            try {
-                // Save to NEW collection: 'payment_verifications'
-                await addDoc(collection(db, "payment_verifications"), {
-                    userId: currentUser.uid,
-                    userName: currentUser.displayName,
-                    userEmail: currentUser.email,
-                    amount: amount,
-                    senderName: sender,
-                    utr: utr,
-                    status: "Checking",
-                    timestamp: new Date()
-                });
-
-                alert("Verification Submitted! Status: Checking.");
-                window.closeVerifyModal();
-            } catch (e) {
-                console.error(e);
-                alert("Error submitting: " + e.message);
-            } finally {
-                btn.innerText = "Submit for Verification";
-                btn.disabled = false;
+                document.getElementById('refEarnings').innerText = data.referralEarnings || 0;
+                document.getElementById('refCount').innerText = data.referralCount || 0;
             }
         }
 
-        // --- SERVICES ---
-        const services = [
-            {
-                category: "Basic (Cheapest)",
-                items: [
-                    { name: "Flowers", price: 99, label: "₹99 / 1k", desc: "Basic quality" },
-                    { name: "Instagram Likes", price: 29, label: "₹29 / 1k", desc: "Fast delivery" },
-                    { name: "Views", price: 1, label: "₹1 / 1k", desc: "High speed" },
-                    { name: "Share", price: 3, label: "₹3 / 1k", desc: "Boost reach" }
-                ]
-            },
-            {
-                category: "High Quality (Non-Drop)",
-                items: [
-                    { name: "Followers HQ", price: 249, label: "₹249 / 1k", desc: "Stable non-drop" },
-                    { name: "Likes HQ", price: 49, label: "₹49 / 1k", desc: "Real profiles" },
-                    { name: "Views HQ", price: 5, label: "₹5 / 1k", desc: "Premium reach" },
-                    { name: "Shares HQ", price: 15, label: "₹15 / 1k", desc: "Viral boost" }
-                ]
-            },
-            {
-                category: "Premium (Verified + Real)",
-                items: [
-                    { name: "Followers Premium", price: 599, label: "₹599 / 1k", desc: "Verified + Rich accounts" },
-                    { name: "Likes Premium", price: 99, label: "₹99 / 1k", desc: "Genuine interaction" },
-                    { name: "Views Premium", price: 19, label: "₹19 / 1k", desc: "High retention" },
-                    { name: "Shares Premium", price: 49, label: "₹49 / 1k", desc: "Executive tier" }
-                ]
-            },
-            {
-                category: "Comments",
-                items: [
-                    { name: "Normal Comments", price: 499, label: "₹499 / 1k", desc: "Random positive text" },
-                    { name: "Custom Text", price: 1499, label: "₹1499 / 1k", desc: "You provide the text" }
-                ]
+        window.withdrawReferral = async () => {
+            const earnings = parseFloat(document.getElementById('refEarnings').innerText);
+            if(earnings < 10) return showToast("Minimum withdrawal is ₹10", "error");
+
+            if(!confirm(`Move ₹${earnings} to your Main Balance?`)) return;
+
+            try {
+                const userRef = doc(db, "users", currentUser.uid);
+                await updateDoc(userRef, {
+                    balance: increment(earnings),
+                    referralEarnings: 0
+                });
+                showToast("Success! Money added to main balance.", "success");
+                document.getElementById('referralModal').style.display = 'none';
+            } catch(e) {
+                showToast(e.message, "error");
             }
+        }
+
+        // --- SERVICE DATA ---
+        const services = [
+            { category: "🔥 Hot & Best Selling", items: [
+                { name: "Instagram Followers [Non-Drop]", price: 249, label: "₹249 / 1k", desc: "365 Days Refill • Instant Start" },
+                { name: "Instagram Likes [Real]", price: 29, label: "₹29 / 1k", desc: "Reach Enabled • Fast" }
+            ]},
+            { category: "💎 Premium Services", items: [
+                { name: "Blue Tick Followers", price: 599, label: "₹599 / 1k", desc: "Verified Profiles • High Quality" },
+                { name: "Indian Real Followers", price: 349, label: "₹349 / 1k", desc: "100% Indian • Active Users" }
+            ]},
+            { category: "🚀 Cheapest Services", items: [
+                { name: "Bot Followers", price: 99, label: "₹99 / 1k", desc: "No Guarantee • For Count Only" },
+                { name: "Bot Views", price: 2, label: "₹2 / 1k", desc: "Instant • Works on Reels" }
+            ]}
         ];
 
         const container = document.getElementById('services-container');
@@ -772,7 +1077,7 @@
                     <h3>${item.name}</h3>
                     <div class="price">${item.label}</div>
                     <div class="desc">${item.desc}</div>
-                    <button class="btn-buy" onclick="openOrderForm('${item.name}', ${item.price})">Purchase</button>
+                    <button class="btn-buy" onclick="openOrderForm('${item.name}', ${item.price})">Purchase Now</button>
                 `;
                 grid.appendChild(card);
             });
