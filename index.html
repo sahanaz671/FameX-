@@ -602,7 +602,7 @@
             <input type="text" id="verifyUTR" class="modal-input" placeholder="T23078...">
 
             <label class="modal-label" style="color:var(--gold);">Referral Code (Optional)</label>
-            <input type="text" id="payRefCode" class="modal-input" placeholder="Enter Code for Bonus!" style="border-color:var(--gold);">
+            <input type="text" id="payRefCode" class="modal-input" placeholder="Enter Code for Bonus!" style="border-color:var(--gold); text-align:center; text-transform:uppercase; letter-spacing:1px;">
             
             <button id="btnSubmitVerify" class="btn-buy" onclick="submitPaymentVerification()">Submit for Verification</button>
             <button class="close-btn" onclick="closeVerifyModal()">Cancel</button>
@@ -665,6 +665,18 @@
 
             <button class="btn-buy" onclick="withdrawReferral()" style="background:var(--gold); color:black; margin-bottom:10px; box-shadow:0 0 15px var(--gold-glow);">Request Withdrawal</button>
             <button class="close-btn" onclick="document.getElementById('referralModal').style.display='none'">Close</button>
+        </div>
+    </div>
+
+    <div class="modal" id="enterReferralModal">
+        <div class="modal-content" style="text-align:center;">
+            <h2 style="color:var(--accent); margin-top:0;">Welcome! 🎉</h2>
+            <p style="color:var(--text-muted);">Do you have a Referral Code from a friend?</p>
+            
+            <input type="text" id="inputReferralCode" class="modal-input" placeholder="Enter Code (Optional)" style="text-align:center; letter-spacing:2px; text-transform:uppercase;">
+            
+            <button class="btn-buy" onclick="submitReferralCode()">Submit Code</button>
+            <button class="close-btn" onclick="document.getElementById('enterReferralModal').style.display='none'">Skip</button>
         </div>
     </div>
 
@@ -757,7 +769,7 @@
 
                 const userRef = doc(db, "users", user.uid);
                 
-                onSnapshot(userRef, (docSnap) => {
+                onSnapshot(userRef, async (docSnap) => {
                     if (docSnap.exists()) {
                         const data = docSnap.data();
                         
@@ -777,7 +789,7 @@
 
                     } else {
                         // Create New User Profile
-                        setDoc(userRef, { 
+                        await setDoc(userRef, { 
                             name: user.displayName, 
                             email: user.email, 
                             balance: 0,
@@ -785,6 +797,8 @@
                             totalSpent: 0,
                             referralEarnings: 0
                         });
+                        // Show Referral Code Modal for New Users (Optional)
+                        document.getElementById('enterReferralModal').style.display = 'flex';
                     }
                 });
             } else {
@@ -945,12 +959,12 @@
         window.openVerifyModal = () => { document.getElementById('verifyPaymentModal').style.display = 'flex'; toggleSidebar(); }
         window.closeVerifyModal = () => { document.getElementById('verifyPaymentModal').style.display = 'none'; }
 
-        // --- SUBMIT PAYMENT WITH REFERRAL ---
+        // --- SUBMIT PAYMENT WITH REFERRAL & SECURITY & BONUS LOGIC ---
         window.submitPaymentVerification = async () => {
             const amount = document.getElementById('verifyAmount').value;
             const sender = document.getElementById('verifySender').value;
             const utr = document.getElementById('verifyUTR').value;
-            const refCode = document.getElementById('payRefCode').value.trim(); // GET REFERRAL CODE
+            const refCode = document.getElementById('payRefCode').value.trim().toUpperCase(); // GET REFERRAL CODE
 
             if(!amount || !sender || !utr) return showToast("Please fill all fields.", "error");
 
@@ -959,6 +973,16 @@
             btn.disabled = true;
 
             try {
+                // 1. Get Current User Data for Checks
+                const userSnap = await getDoc(doc(db, "users", currentUser.uid));
+                const userData = userSnap.data();
+
+                // 2. SECURITY: Check if user is using their OWN code
+                if (refCode && userData.referralCode === refCode) {
+                    throw new Error("You cannot use your own Referral Code!");
+                }
+
+                // 3. Check for Existing Pending Requests
                 const q = query(
                     collection(db, "payment_verifications"), 
                     where("userId", "==", currentUser.uid),
@@ -970,7 +994,14 @@
                     throw new Error("You already have a pending request! Please wait.");
                 }
 
-                // Add to DB with Referral Code
+                // 4. DETERMINE BONUS TYPE (New vs Existing)
+                // If totalDeposited is 0 (or undefined), they are New (10%). Else Repeat (5%).
+                const isNewUser = (userData.totalDeposited || 0) === 0;
+                const bonusType = isNewUser ? "10% (First Time)" : "5% (Repeat)";
+                const finalRefCode = refCode ? refCode : "None";
+                const finalBonusNote = refCode ? bonusType : "No Code";
+
+                // 5. Add to DB
                 await addDoc(collection(db, "payment_verifications"), {
                     userId: currentUser.uid,
                     userName: currentUser.displayName,
@@ -978,13 +1009,14 @@
                     amount: parseFloat(amount),
                     senderName: sender,
                     utr: utr,
-                    referralCode: refCode || "None", // Save code for Admin
+                    referralCode: finalRefCode,
+                    bonusType: finalBonusNote, // Info for Admin
                     status: "Checking",
                     timestamp: serverTimestamp()
                 });
 
-                // TELEGRAM ALERT (INCLUDES REFERRAL CODE)
-                const msg = `<b>💰 NEW PAYMENT!</b>\n\n<b>User:</b> ${currentUser.displayName}\n<b>Amount:</b> ₹${amount}\n<b>UTR:</b> ${utr}\n<b>Sender:</b> ${sender}\n<b>Ref Code:</b> ${refCode ? refCode : 'None'}`;
+                // 6. TELEGRAM ALERT (INCLUDES BONUS INFO)
+                const msg = `<b>💰 NEW PAYMENT!</b>\n\n<b>User:</b> ${currentUser.displayName}\n<b>Amount:</b> ₹${amount}\n<b>UTR:</b> ${utr}\n<b>Sender:</b> ${sender}\n<b>Ref Code:</b> ${finalRefCode}\n<b>Bonus:</b> ${finalBonusNote}`;
                 sendTelegramAlert(msg);
 
                 showToast("Verification Submitted! Admin will approve shortly.", "success");
@@ -1078,6 +1110,40 @@
                 document.getElementById('refEarnings').innerText = data.referralEarnings || 0;
                 document.getElementById('refCount').innerText = data.referralCount || 0;
             }
+        }
+
+        // --- NEW: SUBMIT REFERRAL CODE FOR NEW USERS ---
+        window.submitReferralCode = async () => {
+            const codeInput = document.getElementById('inputReferralCode').value.toUpperCase().trim();
+            if (!codeInput) return showToast("Please enter a code", "error");
+
+            // 1. Find user who owns this code
+            const q = query(collection(db, "users"), where("referralCode", "==", codeInput));
+            const querySnapshot = await getDocs(q);
+
+            if (querySnapshot.empty) {
+                return showToast("Invalid Referral Code", "error");
+            }
+
+            // 2. Prevent self-referral
+            if (querySnapshot.docs[0].id === currentUser.uid) {
+                return showToast("You cannot refer yourself!", "error");
+            }
+
+            // 3. Update Current User
+            const currentUserRef = doc(db, "users", currentUser.uid);
+            await updateDoc(currentUserRef, {
+                referredBy: codeInput
+            });
+
+            // 4. Update Referrer Stats
+            const referrerRef = querySnapshot.docs[0].ref;
+            await updateDoc(referrerRef, {
+                referralCount: increment(1)
+            });
+
+            showToast("Referral Applied! 🎉", "success");
+            document.getElementById('enterReferralModal').style.display = 'none';
         }
 
         // --- WITHDRAWAL LOGIC (UPDATED WITH INPUTS) ---
