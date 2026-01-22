@@ -510,7 +510,7 @@
                 <i class="fas fa-gift" style="color:var(--gold);"></i> Refer & Earn 
             </div>
             <div class="menu-item" onclick="showSection('payment-history-section'); loadPaymentHistory();"> 
-                <i class="fas fa-history"></i> Transactions 
+                <i class="fas fa-history"></i> Payment Status 
             </div>
             <a href="#footer-support" class="menu-item" onclick="toggleSidebar()"> 
                 <i class="fas fa-headset"></i> Support 
@@ -556,7 +556,7 @@
     </div>
 
     <div class="container section" id="payment-history-section">
-        <h2 style="text-align:center; margin-bottom:30px; color:white;">Transactions</h2>
+        <h2 style="text-align:center; margin-bottom:30px; color:white;">Payment Status</h2>
         <div class="table-container">
             <table>
                 <thead>
@@ -654,7 +654,13 @@
                 </div>
             </div>
 
-            <button class="btn-buy" onclick="withdrawReferral()" style="background:var(--gold); color:black; margin-bottom:10px; box-shadow:0 0 15px var(--gold-glow);">Withdraw to Balance</button>
+            <hr style="border:1px solid #222; margin:20px 0;">
+            <h3 style="color:white; font-size:1.1rem; margin-bottom:15px;">Withdraw Request</h3>
+            
+            <input type="number" id="withdrawAmount" class="modal-input" placeholder="Amount (Min ₹10)" style="margin-bottom:10px;">
+            <input type="text" id="withdrawUPI" class="modal-input" placeholder="Your UPI ID or PhonePe Number">
+
+            <button class="btn-buy" onclick="withdrawReferral()" style="background:var(--gold); color:black; margin-bottom:10px; box-shadow:0 0 15px var(--gold-glow);">Request Withdrawal</button>
             <button class="close-btn" onclick="document.getElementById('referralModal').style.display='none'">Close</button>
         </div>
     </div>
@@ -685,7 +691,7 @@
             measurementId: "G-S1T0L618XL"
         };
 
-        // 🤖 YOUR TELEGRAM KEYS (I inserted them for you)
+        // 🤖 YOUR TELEGRAM KEYS
         const TG_BOT_TOKEN = "8488078367:AAHVvnc2gKKvDS52nubByEQO8bTgmhgifsU"; 
         const TG_CHAT_ID = "6153166331"; 
 
@@ -996,7 +1002,14 @@
                 snapshot.forEach(doc => {
                     const payment = doc.data();
                     let statusClass = '#ffc107'; 
-                    if(payment.status === 'Approved' || payment.status === 'Success') statusClass = '#00e676';
+                    let statusText = payment.status;
+
+                    // --- UPDATED STATUS TEXT MAPPING ---
+                    if(payment.status === 'Checking') statusText = 'Pending Checking Details';
+                    if(payment.status === 'Success' || payment.status === 'Approved') {
+                        statusText = 'Approved - Added';
+                        statusClass = '#00e676';
+                    }
                     if(payment.status === 'Rejected') statusClass = '#ff5252';
 
                     const dateObj = payment.timestamp ? payment.timestamp.toDate() : new Date();
@@ -1009,7 +1022,7 @@
                             <td>${payment.utr}<br><span style="color:#666; font-size:0.8rem;">${payment.senderName}</span></td>
                             <td style="text-align:center;">
                                 <span class="status-badge" style="color:${statusClass}; border-color:${statusClass};">
-                                    ${payment.status}
+                                    ${statusText}
                                 </span>
                             </td>
                         </tr>
@@ -1019,7 +1032,7 @@
             });
         }
 
-        // --- REFERRAL SYSTEM ---
+        // --- REFERRAL SYSTEM (UPDATED) ---
         window.openReferralModal = async () => {
             if (!currentUser) return showToast("Please login first", "error");
             document.getElementById('referralModal').style.display = 'flex';
@@ -1031,7 +1044,6 @@
             if (docSnap.exists()) {
                 const data = docSnap.data();
                 
-                // Generate Code if missing
                 if (!data.referralCode) {
                     const code = (currentUser.displayName.substring(0,3) + Math.floor(1000 + Math.random() * 9000)).toUpperCase().replace(/\s/g, '');
                     await updateDoc(userRef, { 
@@ -1049,22 +1061,48 @@
             }
         }
 
+        // --- UPDATED WITHDRAWAL LOGIC ---
         window.withdrawReferral = async () => {
-            const earnings = parseFloat(document.getElementById('refEarnings').innerText);
-            if(earnings < 10) return showToast("Minimum withdrawal is ₹10", "error");
+            const currentEarnings = parseFloat(document.getElementById('refEarnings').innerText);
+            const amount = parseFloat(document.getElementById('withdrawAmount').value);
+            const upi = document.getElementById('withdrawUPI').value;
 
-            if(!confirm(`Move ₹${earnings} to your Main Balance?`)) return;
+            if(!amount || amount < 10) return showToast("Minimum withdrawal is ₹10", "error");
+            if(amount > currentEarnings) return showToast("Insufficient Earnings!", "error");
+            if(!upi) return showToast("Please enter UPI ID or Phone Number", "error");
+
+            if(!confirm(`Withdraw ₹${amount} to ${upi}?`)) return;
+
+            const btn = document.querySelector('#referralModal .btn-buy');
+            btn.innerText = "Processing..."; btn.disabled = true;
 
             try {
+                // 1. Deduct Earnings
                 const userRef = doc(db, "users", currentUser.uid);
                 await updateDoc(userRef, {
-                    balance: increment(earnings),
-                    referralEarnings: 0
+                    referralEarnings: increment(-amount)
                 });
-                showToast("Success! Money added to main balance.", "success");
+
+                // 2. Save Withdrawal Request (so you can see it in DB if needed)
+                await addDoc(collection(db, "withdrawals"), {
+                    userId: currentUser.uid,
+                    userName: currentUser.displayName,
+                    amount: amount,
+                    upi: upi,
+                    status: "Pending",
+                    timestamp: serverTimestamp()
+                });
+
+                // 3. Telegram Alert
+                const msg = `<b>💸 WITHDRAWAL REQUEST!</b>\n\n<b>User:</b> ${currentUser.displayName}\n<b>Amount:</b> ₹${amount}\n<b>UPI:</b> ${upi}`;
+                sendTelegramAlert(msg);
+
+                showToast("Successfully transfer to your UPI", "success");
                 document.getElementById('referralModal').style.display = 'none';
             } catch(e) {
                 showToast(e.message, "error");
+            } finally {
+                btn.innerText = "Request Withdrawal"; btn.disabled = false;
             }
         }
 
