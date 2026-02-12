@@ -903,8 +903,7 @@
         };
 
         // 🤖 YOUR TELEGRAM KEYS 
-      ‎  const TG_BOT_TOKEN = "8488078367:AAHVvnc2gKKvDS52nubByEQO8bTgmhgifsU";‎
-        const TG_CHAT_ID = "6153166331";
+      ‎  
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
@@ -934,8 +933,7 @@
         }
 
         // TELEGRAM SENDER
-        const sendTelegramAlert = async (text) => {
-            const body = {
+        
                 chat_id: TG_CHAT_ID,
                 text: text,
                 parse_mode: 'HTML'
